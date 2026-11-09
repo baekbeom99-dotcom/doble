@@ -1,15 +1,15 @@
 import { useState } from 'react';
 import type { SymbolDef } from './content/types';
-import type { GameConfig, GameState, ModeId } from './engine/state';
+import type { GameConfig, GameState } from './engine/state';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { Game } from './ui/screens/Game';
 import { Home } from './ui/screens/Home';
 import { Result } from './ui/screens/Result';
-import { Setup } from './ui/screens/Setup';
+import { Setup, type SetupKind } from './ui/screens/Setup';
 
 type Screen =
   | { name: 'home' }
-  | { name: 'setup'; mode: ModeId }
+  | { name: 'setup'; kind: SetupKind }
   | { name: 'game'; config: GameConfig; symbols: SymbolDef[] }
   | { name: 'result'; config: GameConfig; symbols: SymbolDef[]; state: GameState };
 
@@ -30,11 +30,11 @@ function Screens() {
 
   switch (screen.name) {
     case 'home':
-      return <Home onPick={mode => setScreen({ name: 'setup', mode })} />;
+      return <Home onPick={kind => setScreen({ name: 'setup', kind })} />;
     case 'setup':
       return (
         <Setup
-          mode={screen.mode}
+          kind={screen.kind}
           onBack={() => setScreen({ name: 'home' })}
           onStart={(config, symbols) => setScreen({ name: 'game', config, symbols })}
         />
