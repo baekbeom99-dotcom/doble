@@ -13,6 +13,15 @@ type Screen =
   | { name: 'result'; config: GameConfig; symbols: SymbolDef[]; state: GameState };
 
 export default function App() {
+  return (
+    <>
+      <Screens />
+      <div className="rotate-notice" aria-hidden="true">태블릿을 가로로 돌려 주세요</div>
+    </>
+  );
+}
+
+function Screens() {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
 
   switch (screen.name) {

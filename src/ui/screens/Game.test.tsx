@@ -46,3 +46,7 @@ test('정답 직후 이전 카드가 보이는 동안의 터치는 새 라운드
   expect(screen.getByTestId('seat-1').querySelector('.seat-region')).not.toHaveClass('is-locked');
   expect(within(screen.getByTestId('badge-1')).getByText('0')).toBeInTheDocument();
 });
+test('서바이벌에서는 공용 정보 칸에 남은 초를 짧게 보여준다', () => {
+  render(<Game config={{ ...duoCfg, mode: 'soloSurvival', players: [duoCfg.players[0]] }} symbols={symbols} onOver={() => {}} />);
+  expect(screen.getByText('30초')).toBeInTheDocument();
+});

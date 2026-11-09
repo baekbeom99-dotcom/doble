@@ -66,6 +66,12 @@ export function Game({ config, symbols, onOver }: Props) {
     return () => { off(); controller.stop(); timers.forEach(clearTimeout); };
   }, [controller, byId, config.speech]);
 
+  useEffect(() => {
+    // 가로 고정을 시도한다. 지원하지 않거나 전체 화면이 아니면 조용히 넘어간다
+    const orientation = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    orientation?.lock?.('landscape').catch(() => {});
+  }, []);
+
   const { W, H } = useViewport();
   const table = useMemo(() => computeTable(config.players.length as 1 | 2 | 3 | 4, W, H), [config.players.length, W, H]);
   const round = freeze?.round ?? state.round;
@@ -99,7 +105,7 @@ export function Game({ config, symbols, onOver }: Props) {
   const solo = config.mode === 'soloSurvival';
   const hudContent = solo ? (
     <>
-      <span>남은 시간 {Math.max(0, Math.ceil(state.mode.timeLeft / 1000))}초</span>
+      <span>{Math.max(0, Math.ceil(state.mode.timeLeft / 1000))}초</span>
       <span className="hud__bar"><i style={{ width: `${Math.min(100, (state.mode.timeLeft / SURVIVAL_START_MS) * 100)}%` }} /></span>
     </>
   ) : (

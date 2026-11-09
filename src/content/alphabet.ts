@@ -1,7 +1,7 @@
 import type { SymbolDef } from './types';
 
-/** 대문자와 모양이 같아 크기로만 구분되는 소문자. 섞기 모드에서 뺀다. */
-export const LOOKALIKE_LOWER = ['c', 'o', 's', 'u', 'v', 'w', 'x', 'z'] as const;
+/** 대문자와 모양이 같아 크기로만 구분되는 소문자와, 대문자 I와 구분되지 않는 l. 섞기 모드에서 뺀다. */
+export const LOOKALIKE_LOWER = ['c', 'l', 'o', 's', 'u', 'v', 'w', 'x', 'z'] as const;
 
 const UPPER = Array.from({ length: 26 }, (_, i) => String.fromCharCode(65 + i));
 const LOWER = UPPER.map(c => c.toLowerCase());
