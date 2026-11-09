@@ -4,6 +4,7 @@ import type { Rect } from '../../engine/geometry';
 import type { Placement } from '../../engine/layout';
 import { SEAT_COLORS, shadowColor, type SeatColor, type SeatGeom } from '../../engine/seats';
 import type { ItemId } from '../../engine/state';
+import { ELEMENTS } from '../../engine/coop/defense';
 import { Glyph } from './Glyph';
 
 export const ITEM_LABELS: Record<ItemId, string> = { freeze: '얼리기', swirl: '뒤섞기', hint: '힌트', shield: '방패' };
@@ -38,6 +39,12 @@ interface Props {
   spinning?: boolean;
   targets?: TargetOption[] | null;
   onPickTarget?: (index: number) => void;
+  /** 이 자리가 맡은 원소 (협동) */
+  elements?: number[];
+  /** 원소 차례가 아니거나 이미 맞혀서 흐리게 표시 (협동) */
+  dim?: boolean;
+  /** 배지의 점수 숫자를 숨긴다 (협동) */
+  hideScore?: boolean;
 }
 
 export function regionStyle(color: string): CSSProperties {
@@ -58,16 +65,17 @@ export function extrasRect(geom: SeatGeom): Rect {
 export function SeatView(props: Props) {
   const { index, geom, color, symbols, placements, score, name, showName, locked, flash, correctSymbol, onTap } = props;
   const { streak = 0, item = null, onUseItem, team = null, tower = false, hintSymbol = null, spinning = false, targets = null, onPickTarget } = props;
+  const { elements = [], dim = false, hideScore = false } = props;
   const { cx, cy, rx, ry } = geom.region.ellipse;
   const hex = SEAT_COLORS[color];
-  const regionClass = ['seat-region', locked && 'is-locked', flash === 'wrong' && 'is-wrong'].filter(Boolean).join(' ');
+  const regionClass = ['seat-region', locked && 'is-locked', flash === 'wrong' && 'is-wrong', dim && 'is-dim'].filter(Boolean).join(' ');
   const b = geom.badge;
   const ex = extrasRect(geom);
   const rotate = `rotate(${geom.facing}deg)`;
   const showExtras = streak >= 2 || item || (targets && targets.length > 0);
 
   return (
-    <div className="seat" data-testid={`seat-${index}`}>
+    <div className={dim ? "seat seat--dim" : "seat"} data-testid={`seat-${index}`}>
       <div className={regionClass} style={{ left: cx - rx, top: cy - ry, width: rx * 2, height: ry * 2, ...regionStyle(hex) }} />
       {symbols.map((s, i) => (
         <Glyph
@@ -83,7 +91,12 @@ export function SeatView(props: Props) {
       <div className="badge" data-testid={`badge-${index}`} style={{ left: b.x, top: b.y, width: b.w, height: b.h, background: hex, transform: rotate }}>
         {team !== null && <span className="badge__team">{TEAM_LETTERS[team]}</span>}
         {showName && <span className="badge__name">{name}</span>}
-        <b className="badge__score">{score}</b>
+        {elements.length > 0 && (
+          <span className="badge__elements">
+            {elements.map(e => <span key={e} title={ELEMENTS[e].name}>{ELEMENTS[e].icon}</span>)}
+          </span>
+        )}
+        {!hideScore && <b className="badge__score">{score}</b>}
         {tower && (
           <span className="tower" data-testid={`tower-${index}`}>
             {Array.from({ length: Math.min(score, MAX_TOWER) }, (_, i) => <i key={i} />)}
