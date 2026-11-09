@@ -25,7 +25,16 @@ body {
   border: 4px solid var(--ink);
   border-radius: 50%;
 }
-.center-card { transition: transform 300ms ease; }
+.center-card { transition: transform 300ms ease; overflow: hidden; }
+/* 바닥 띠: 카드의 아래쪽을 곧은 선으로 잘라 평평하게 칠한다. 카드와 함께 회전해 바닥 방향을 보여준다 */
+.center-card__floor {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: var(--ink);
+  border-top: 3px solid var(--ink);
+}
 .seat-region.is-locked { filter: grayscale(1); }
 .seat-region.is-wrong { border-color: var(--red); animation: shake 400ms; }
 

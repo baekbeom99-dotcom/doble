@@ -1,7 +1,7 @@
 import { pointInRegion, type Rect } from './geometry';
 import { layoutSymbols } from './layout';
 import { createRng } from './rng';
-import { computeTable, shadowColor, type TableGeom } from './seats';
+import { computeTable, floorBand, shadowColor, type TableGeom } from './seats';
 
 const VIEWPORTS: [number, number][] = [[1024, 768], [1280, 800], [1180, 820], [960, 600]];
 const COUNTS = [1, 2, 3, 4] as const;
@@ -69,6 +69,21 @@ describe.each(VIEWPORTS)('%ix%i', (W, H) => {
       expect(() => layoutSymbols({
         region: { ellipse: c, clip: { x: c.cx - c.rx, y: c.cy - c.ry, w: 2 * c.rx, h: 2 * c.ry } },
         exclusions: [], count: 8, rng: createRng(seed),
+      })).not.toThrow();
+    }
+  });
+});
+
+describe('중앙 카드 바닥 띠', () => {
+  test('floorBand는 원의 아래쪽 15% 높이 띠를 돌려준다', () => {
+    expect(floorBand({ cx: 100, cy: 100, rx: 50, ry: 50 })).toEqual({ x: 50, y: 135, w: 100, h: 15 });
+  });
+  test.each(VIEWPORTS)('%ix%i: 바닥 띠를 피해도 중앙 카드에 심볼 8개가 들어간다', (W, H) => {
+    const c = computeTable(4, W, H).center;
+    for (let seed = 0; seed < 30; seed++) {
+      expect(() => layoutSymbols({
+        region: { ellipse: c, clip: { x: c.cx - c.rx, y: c.cy - c.ry, w: 2 * c.rx, h: 2 * c.ry } },
+        exclusions: [floorBand(c)], count: 8, rng: createRng(seed),
       })).not.toThrow();
     }
   });

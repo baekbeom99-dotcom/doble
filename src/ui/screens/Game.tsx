@@ -6,7 +6,7 @@ import { MODES } from '../../engine/modes';
 import { SURVIVAL_START_MS } from '../../engine/modes/soloSurvival';
 import { createGame } from '../../engine/reducer';
 import { createRng } from '../../engine/rng';
-import { computeTable } from '../../engine/seats';
+import { computeTable, floorBand } from '../../engine/seats';
 import type { GameConfig, GameState, RoundState } from '../../engine/state';
 import { speak } from '../../services/speech';
 import { CenterCard } from '../components/CenterCard';
@@ -86,7 +86,7 @@ export function Game({ config, symbols, onOver }: Props) {
     const c = table.center;
     const center = layoutWithFallback({
       region: { ellipse: c, clip: { x: c.cx - c.rx, y: c.cy - c.ry, w: 2 * c.rx, h: 2 * c.ry } },
-      exclusions: [], count: round.center.length, rotate: config.symbolRotation,
+      exclusions: [floorBand(c)], count: round.center.length, rotate: config.symbolRotation,
       rng: createRng(seed + CENTER_SEAT * SEAT_SEED_STEP),
     });
     return { seats, center };

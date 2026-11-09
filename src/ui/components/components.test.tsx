@@ -58,3 +58,9 @@ test('Hud는 내용을 보여준다', () => {
   render(<Hud rect={{ x: 10, y: 10, w: 160, h: 40 }} facing={180}>7/20</Hud>);
   expect(screen.getByText('7/20')).toBeInTheDocument();
 });
+test('중앙 카드 아래쪽에 바닥 띠를 그린다', () => {
+  render(<CenterCard circle={{ cx: 512, cy: 384, rx: 160, ry: 160 }} symbols={[ko]} placements={[{ x: 512, y: 384, size: 60, rotation: 0 }]} rotation={0} />);
+  const floor = screen.getByTestId('center-floor');
+  expect(screen.getByTestId('center-card')).toContainElement(floor);
+  expect(floor).toHaveStyle({ height: '15%' });
+});

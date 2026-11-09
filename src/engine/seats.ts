@@ -120,3 +120,12 @@ function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: numb
   ];
   return { center, seats, hud };
 }
+
+/** 중앙 카드 바닥 띠의 높이 (지름 대비) */
+export const FLOOR_BAND_RATIO = 0.15;
+
+/** 중앙 카드 아래쪽 바닥 띠 영역 (회전 전 기준). 글자 배치에서 제외한다 */
+export function floorBand(e: Ellipse): Rect {
+  const h = 2 * e.ry * FLOOR_BAND_RATIO;
+  return { x: e.cx - e.rx, y: e.cy + e.ry - h, w: 2 * e.rx, h };
+}

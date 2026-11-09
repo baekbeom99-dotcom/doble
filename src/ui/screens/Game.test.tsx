@@ -59,3 +59,12 @@ test('작은 화면에서 4명·8개·심볼 회전이어도 게임 화면이 �
   render(<Game config={cfg} symbols={symbols} onOver={() => {}} />);
   expect(screen.getByTestId('center-card').querySelectorAll('[data-symbol]')).toHaveLength(8);
 });
+test('중앙 카드의 글자는 바닥 띠에서 8px 이상 떨어져 있다', () => {
+  render(<Game config={{ ...duoCfg, players: duoCfg.players.map(p => ({ ...p, cardSize: 8 })) }} symbols={symbols} onOver={() => {}} />);
+  const card = screen.getByTestId('center-card');
+  const diameter = parseFloat(card.style.width);
+  const bandTop = diameter * (1 - 0.15);
+  const glyphs = [...card.querySelectorAll<HTMLElement>('[data-symbol]')];
+  expect(glyphs).toHaveLength(8);
+  for (const g of glyphs) expect(parseFloat(g.style.top) + parseFloat(g.style.height)).toBeLessThanOrEqual(bandTop - 8);
+});
