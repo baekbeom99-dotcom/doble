@@ -72,3 +72,30 @@ export function layoutSymbols(opts: {
     return out;
   }
 }
+
+type LayoutOptions = Parameters<typeof layoutSymbols>[0];
+
+/** 회전 없이도, 최소 크기로도 들어가지 않을 때 차례로 줄여 볼 최소 크기 */
+const FALLBACK_MIN_SIZES = [36, 28, 20, 12, 8];
+
+/**
+ * 화면이 작거나 회전 상자가 커서 배치가 안 되면 조건을 차례로 완화해 다시 배치한다.
+ * 1) 요청대로 2) 회전 없이 3) 최소 크기를 점점 줄여서. 여백과 간격 조건은 끝까지 지킨다.
+ */
+export function layoutWithFallback(opts: LayoutOptions): Placement[] {
+  const attempts: Partial<LayoutOptions>[] = [
+    {},
+    ...(opts.rotate ? [{ rotate: false }] : []),
+    ...FALLBACK_MIN_SIZES.map(minSize => ({ rotate: false, minSize })),
+  ];
+  let lastError: unknown;
+  for (const change of attempts) {
+    try {
+      return layoutSymbols({ ...opts, ...change });
+    } catch (e) {
+      if (!(e instanceof LayoutError)) throw e;
+      lastError = e;
+    }
+  }
+  throw lastError;
+}

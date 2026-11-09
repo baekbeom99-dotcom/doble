@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { SymbolDef } from '../../content/types';
 import { GameController } from '../../engine/controller';
-import { layoutSymbols, type Placement } from '../../engine/layout';
+import { layoutWithFallback, type Placement } from '../../engine/layout';
 import { MODES } from '../../engine/modes';
 import { SURVIVAL_START_MS } from '../../engine/modes/soloSurvival';
 import { createGame } from '../../engine/reducer';
@@ -79,12 +79,12 @@ export function Game({ config, symbols, onOver }: Props) {
   const layouts = useMemo(() => {
     const seed = config.seed + round.index * ROUND_SEED_STEP;
     const seats = table.seats.map((seat, i): Placement[] =>
-      layoutSymbols({
+      layoutWithFallback({
         region: seat.region, exclusions: [seat.badge], count: round.cards[i].length,
         rotate: config.symbolRotation, rng: createRng(seed + i * SEAT_SEED_STEP),
       }));
     const c = table.center;
-    const center = layoutSymbols({
+    const center = layoutWithFallback({
       region: { ellipse: c, clip: { x: c.cx - c.rx, y: c.cy - c.ry, w: 2 * c.rx, h: 2 * c.ry } },
       exclusions: [], count: round.center.length, rotate: config.symbolRotation,
       rng: createRng(seed + CENTER_SEAT * SEAT_SEED_STEP),

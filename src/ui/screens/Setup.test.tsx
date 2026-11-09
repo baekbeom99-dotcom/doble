@@ -34,3 +34,10 @@ test('인원을 4명으로 바꾸면 이름 칸이 4개가 된다', () => {
   fireEvent.click(within(screen.getByRole('group', { name: '인원' })).getByRole('radio', { name: '4명' }));
   expect(screen.getByLabelText('플레이어 4 이름')).toHaveValue('플레이어 4');
 });
+test('인원을 줄였다 늘려도 두 사람이 같은 색을 가질 수 없다', () => {
+  render(<Setup mode="score" onStart={() => {}} onBack={() => {}} />);
+  const people = within(screen.getByRole('group', { name: '인원' }));
+  fireEvent.click(people.getByRole('radio', { name: '4명' }));
+  fireEvent.click(people.getByRole('radio', { name: '2명' }));
+  expect(within(screen.getByRole('group', { name: '플레이어 1 색' })).getByRole('radio', { name: '노랑' })).toBeDisabled();
+});

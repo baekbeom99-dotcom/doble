@@ -1,5 +1,5 @@
 import { rectInRegion, rectsGap, type Rect, type Region } from './geometry';
-import { layoutSymbols, LayoutError, type Placement } from './layout';
+import { layoutSymbols, layoutWithFallback, LayoutError, type Placement } from './layout';
 import { createRng } from './rng';
 
 const big: Region = { ellipse: { cx: 300, cy: 600, rx: 260, ry: 260 }, clip: { x: 0, y: 0, w: 900, h: 600 } };
@@ -30,4 +30,20 @@ test('같은 시드는 같은 배치를 만든다', () => {
 test('도저히 들어가지 않으면 LayoutError를 던진다', () => {
   const tiny: Region = { ellipse: { cx: 50, cy: 50, rx: 50, ry: 50 }, clip: { x: 0, y: 0, w: 100, h: 100 } };
   expect(() => layoutSymbols({ region: tiny, exclusions: [], count: 8, rng: createRng(1) })).toThrow(LayoutError);
+});
+
+describe('layoutWithFallback', () => {
+  const center: Region = { ellipse: { cx: 132, cy: 132, rx: 132, ry: 132 }, clip: { x: 0, y: 0, w: 264, h: 264 } };
+  test('회전 상자가 들어가지 않으면 회전 없이 배치한다', () => {
+    for (let seed = 0; seed < 20; seed++) {
+      const ps = layoutWithFallback({ region: center, exclusions: [], count: 8, rotate: true, rng: createRng(seed) });
+      expect(ps).toHaveLength(8);
+    }
+  });
+  test('최소 크기로도 들어가지 않으면 더 작게라도 배치한다', () => {
+    const small: Region = { ellipse: { cx: 80, cy: 80, rx: 80, ry: 80 }, clip: { x: 0, y: 0, w: 160, h: 160 } };
+    const ps = layoutWithFallback({ region: small, exclusions: [], count: 8, rng: createRng(1) });
+    expect(ps).toHaveLength(8);
+    ps.forEach((p, i) => ps.slice(i + 1).forEach(q => expect(rectsGap(boxOf(p), boxOf(q))).toBeGreaterThanOrEqual(8)));
+  });
 });

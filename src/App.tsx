@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { SymbolDef } from './content/types';
 import type { GameConfig, GameState, ModeId } from './engine/state';
+import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { Game } from './ui/screens/Game';
 import { Home } from './ui/screens/Home';
 import { Result } from './ui/screens/Result';
@@ -13,9 +14,12 @@ type Screen =
   | { name: 'result'; config: GameConfig; symbols: SymbolDef[]; state: GameState };
 
 export default function App() {
+  const [resets, setResets] = useState(0);
   return (
     <>
-      <Screens />
+      <ErrorBoundary onReset={() => setResets(n => n + 1)}>
+        <Screens key={resets} />
+      </ErrorBoundary>
       <div className="rotate-notice" aria-hidden="true">태블릿을 가로로 돌려 주세요</div>
     </>
   );

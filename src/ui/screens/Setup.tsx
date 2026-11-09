@@ -102,7 +102,7 @@ export function Setup({ mode, onStart, onBack }: Props) {
                   name={`color-${i}`}
                   aria-label={COLOR_NAMES[c]}
                   checked={colors[i] === c}
-                  disabled={colors.some((other, j) => j !== i && j < count && other === c)}
+                  disabled={colors.some((other, j) => j !== i && other === c)}
                   onChange={() => setColors(cs => cs.map((x, j) => (j === i ? c : x)))}
                 />
               </label>

@@ -50,3 +50,12 @@ test('서바이벌에서는 공용 정보 칸에 남은 초를 짧게 보여준�
   render(<Game config={{ ...duoCfg, mode: 'soloSurvival', players: [duoCfg.players[0]] }} symbols={symbols} onOver={() => {}} />);
   expect(screen.getByText('30초')).toBeInTheDocument();
 });
+test('작은 화면에서 4명·8개·심볼 회전이어도 게임 화면이 그려진다', () => {
+  window.innerWidth = 960; window.innerHeight = 600;
+  const cfg: GameConfig = {
+    ...duoCfg, symbolRotation: true,
+    players: ['pink', 'sky', 'yellow', 'lime'].map((color, i) => ({ name: `P${i}`, color: color as 'pink', cardSize: 8 })),
+  };
+  render(<Game config={cfg} symbols={symbols} onOver={() => {}} />);
+  expect(screen.getByTestId('center-card').querySelectorAll('[data-symbol]')).toHaveLength(8);
+});
