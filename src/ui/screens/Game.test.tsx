@@ -149,3 +149,26 @@ test('마지막 정답의 강조 표시를 보여준 뒤에 결과 화면으로 
     vi.useRealTimers();
   }
 });
+
+test('협동: 한 명이 맞히면 몬스터 체력이 줄고 그 자리가 흐려진다', () => {
+  const cfg = testConfig({ mode: 'coop' });
+  render(<Game config={cfg} symbols={symbols} onOver={() => {}} />);
+  expect(screen.getAllByLabelText('몬스터 체력 16/16').length).toBeGreaterThan(0);
+  tapSeat(0, createGame(cfg, pool21, MODES, symbols).round.answers[0]);
+  expect(screen.getAllByLabelText('몬스터 체력 15/16').length).toBeGreaterThan(0);
+  expect(screen.getByTestId('seat-0').querySelector('.seat-region')).toHaveClass('is-dim');
+});
+test('협동: 공격 시간이 다 되면 공격 준비! 배너와 챌린지가 나온다', () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance', 'Date'] });
+  try {
+    render(<Game config={testConfig({ mode: 'coop' })} symbols={symbols} onOver={() => {}} />);
+    act(() => { vi.advanceTimersByTime(20300); });
+    expect(screen.getAllByText('공격 준비!').length).toBeGreaterThan(0);
+  } finally { vi.useRealTimers(); }
+});
+test('협동 1인: 정보 칸 하나와 원소 4개, 배지에 점수 숫자가 없다', () => {
+  render(<Game config={testConfig({ mode: 'coop', players: [testConfig().players[0]] })} symbols={symbols} onOver={() => {}} />);
+  expect(screen.getAllByLabelText(/몬스터 체력/)).toHaveLength(1);
+  ['🔥', '💧', '🌿', '⚡'].forEach(icon => expect(within(screen.getByTestId('seat-0')).getByText(icon)).toBeInTheDocument());
+  expect(within(screen.getByTestId('badge-0')).queryByText('0')).not.toBeInTheDocument();
+});
