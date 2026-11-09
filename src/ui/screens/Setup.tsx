@@ -6,7 +6,7 @@ import { SEAT_COLORS, type SeatColor } from '../../engine/seats';
 import { ALL_RULES, NO_RULES, type BombConfig, type GameConfig, type ModeId, type Rules } from '../../engine/state';
 
 export type SetupKind = 'solo' | 'versus' | 'team';
-type Method = Exclude<ModeId, 'soloSurvival'>;
+type Method = Extract<ModeId, 'score' | 'tower' | 'bomb'>;
 
 const TITLES: Record<SetupKind, string> = { solo: '혼자 하기', versus: '같이 하기', team: '팀 대결' };
 const COUNTS: Record<SetupKind, number[]> = { solo: [1], versus: [2, 3, 4], team: [3, 4] };

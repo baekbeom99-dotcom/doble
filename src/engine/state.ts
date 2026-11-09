@@ -1,7 +1,7 @@
-import type { SetConfig } from '../content/types';
+import type { SetConfig, SymbolDef } from '../content/types';
 import type { SeatColor } from './seats';
 
-export type ModeId = 'soloSurvival' | 'score' | 'tower' | 'bomb';
+export type ModeId = 'soloSurvival' | 'score' | 'tower' | 'bomb' | 'coop';
 export type ItemId = 'freeze' | 'swirl' | 'hint' | 'shield';
 
 export interface PlayerConfig { name: string; color: SeatColor; cardSize: number }
@@ -43,6 +43,49 @@ export interface PlayerState {
   hintRound: number;
 }
 
+export type ChallengeKind = 'elements' | 'quota';
+export type RewardId = 'heal' | 'bonus' | 'special';
+
+export interface Mission {
+  text: string;
+  /** 미션 대상 심볼 id */
+  ids: string[];
+  target: number;
+  progress: number;
+  reward: RewardId;
+  done: boolean;
+}
+
+export interface Challenge {
+  kind: ChallengeKind;
+  timeLeft: number;
+  /** 원소 순서 (공동 목표면 빈 배열) */
+  sequence: number[];
+  /** 원소 순서에서 지금 차례 위치 */
+  step: number;
+  /** 공동 목표 수 (원소 순서면 sequence.length) */
+  target: number;
+  /** 공동 목표 진행 수 */
+  count: number;
+}
+
+export interface CoopState {
+  stage: number;
+  hearts: number;
+  hp: number;
+  maxHp: number;
+  /** 몬스터 공격까지 남은 시간 */
+  attackLeft: number;
+  /** 지금까지 시작한 방어 챌린지 수 (난수 시드용) */
+  attackCount: number;
+  /** 이번 라운드에 맞힌 사람 */
+  answered: boolean[];
+  challenge: Challenge | null;
+  mission: Mission;
+  /** 미션을 새로 만들 때 쓰는 심볼 정보 */
+  symbols: SymbolDef[];
+}
+
 export interface RoundState {
   index: number;
   center: string[];
@@ -60,6 +103,8 @@ export interface GameState {
   round: RoundState;
   /** 모드별 숫자 상태 */
   mode: Record<string, number>;
+  /** 협동 상태 (협동이 아니면 null) */
+  coop: CoopState | null;
 }
 
 export type Action =
@@ -76,7 +121,13 @@ export type GameEvent =
   | { type: 'gotItem'; player: number; item: ItemId }
   | { type: 'usedItem'; player: number; item: ItemId }
   | { type: 'blocked'; player: number }
-  | { type: 'give'; from: number; to: number; count: number };
+  | { type: 'give'; from: number; to: number; count: number }
+  | { type: 'damage'; amount: number; combo: boolean }
+  | { type: 'monsterDown'; stage: number }
+  | { type: 'heartLost' }
+  | { type: 'challengeStart'; kind: ChallengeKind }
+  | { type: 'challengeEnd'; success: boolean }
+  | { type: 'missionDone'; reward: RewardId };
 
 export interface Mode {
   init(config: GameConfig): Record<string, number>;
@@ -86,6 +137,10 @@ export interface Mode {
   onWrong(s: GameState, player: number): GameState;
   onTick(s: GameState, dt: number): { state: GameState; events?: GameEvent[] };
   isOver(s: GameState): boolean;
+  /** false면 이 사람의 터치를 무시한다 (이미 맞힌 사람, 차례가 아닌 사람 등) */
+  canTap?(s: GameState, player: number): boolean;
+  /** 협동 상태를 만든다 */
+  initCoop?(config: GameConfig, ctx: { pool: string[]; symbols: SymbolDef[] }): CoopState;
 }
 
 export type ModeTable = Record<ModeId, Mode>;

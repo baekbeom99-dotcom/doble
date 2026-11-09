@@ -1,3 +1,5 @@
+import { maxCardSize, MAX_CARD_SIZE } from '../content/registry';
+import type { SymbolDef } from '../content/types';
 import { generateRound } from './cardGen';
 import { updateStreaks } from './modifiers/combo';
 import { correctValue } from './modifiers/finalRound';
@@ -20,10 +22,21 @@ export { ROUND_SEED_STEP };
 
 type Step = { state: GameState; events: GameEvent[] };
 
-export function makeRound(config: GameConfig, pool: string[], index: number): RoundState {
+export interface RoundOptions {
+  /** 정답으로 더 자주 나오게 할 심볼 id (미션 대상) */
+  preferIds?: string[];
+  /** 카드당 심볼 수를 이만큼 늘린다 (협동 단계) */
+  sizeBonus?: number;
+}
+
+export function makeRound(config: GameConfig, pool: string[], index: number, opts: RoundOptions = {}): RoundState {
+  const limit = Math.min(MAX_CARD_SIZE, maxCardSize(pool.length));
+  const bonus = opts.sizeBonus ?? 0;
+  const prefer = opts.preferIds && opts.preferIds.length > 0 ? new Set(opts.preferIds) : null;
   const r = generateRound({
     pool,
-    playerSizes: config.players.map(p => p.cardSize),
+    playerSizes: config.players.map(p => (bonus > 0 ? Math.max(p.cardSize, Math.min(limit, p.cardSize + bonus)) : p.cardSize)),
+    preferAnswer: prefer ? id => prefer.has(id) : undefined,
     rng: createRng(config.seed + index * ROUND_SEED_STEP),
   });
   return { index, center: r.center, cards: r.playerCards, answers: r.answers, rotation: (index * config.rotationStep) % 360 };
@@ -31,28 +44,41 @@ export function makeRound(config: GameConfig, pool: string[], index: number): Ro
 
 const BLANK_PLAYER: PlayerState = { score: 0, lockedUntil: 0, streak: 0, item: null, spinUntil: 0, hintRound: -1 };
 
-export function createGame(config: GameConfig, pool: string[], modes: ModeTable): GameState {
+/** 심볼 정보가 없을 때 id만으로 최소 SymbolDef를 만든다 (테스트 편의) */
+const bareSymbol = (id: string): SymbolDef => ({ id, display: { kind: 'text', value: id }, speech: id, lang: 'ko-KR', tags: {} });
+
+/** 협동이면 미션 대상과 단계별 심볼 수를 반영한다 */
+export function roundOptions(s: Pick<GameState, 'coop'>): RoundOptions {
+  if (!s.coop) return {};
+  return { preferIds: s.coop.mission.done ? undefined : s.coop.mission.ids, sizeBonus: s.coop.stage - 1 };
+}
+
+export function createGame(config: GameConfig, pool: string[], modes: ModeTable, symbols?: SymbolDef[]): GameState {
   const mode = modes[config.mode];
+  const coop = mode.initCoop ? mode.initCoop(config, { pool, symbols: symbols ?? pool.map(bareSymbol) }) : null;
   return {
     config,
     pool,
     now: 0,
     phase: 'playing',
     players: config.players.map((_, i) => ({ ...BLANK_PLAYER, ...mode.initPlayer?.(config, i) })),
-    round: makeRound(config, pool, 0),
+    round: makeRound(config, pool, 0, roundOptions({ coop })),
     mode: mode.init(config),
+    coop,
   };
 }
 
-function nextRound(s: GameState): Step {
+export function nextRound(s: GameState): Step {
   const index = s.round.index + 1;
-  return { state: { ...s, round: makeRound(s.config, s.pool, index) }, events: [{ type: 'round', index }] };
+  return { state: { ...s, round: makeRound(s.config, s.pool, index, roundOptions(s)) }, events: [{ type: 'round', index }] };
 }
 
 function handleTap(s: GameState, a: Extract<Action, { type: 'TAP' }>, modes: ModeTable): Step | null {
   const mode = modes[s.config.mode];
   const p = s.players[a.player];
-  const ignored = !p || a.round !== s.round.index || s.now < p.lockedUntil || !s.round.cards[a.player].includes(a.symbol);
+  const ignored =
+    !p || a.round !== s.round.index || s.now < p.lockedUntil || !s.round.cards[a.player].includes(a.symbol) ||
+    mode.canTap?.(s, a.player) === false;
   if (ignored) return null;
 
   if (a.symbol !== s.round.answers[a.player]) {
