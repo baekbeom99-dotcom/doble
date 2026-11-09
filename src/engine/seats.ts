@@ -49,7 +49,7 @@ export function computeTable(playerCount: 1 | 2 | 3 | 4, W: number, H: number): 
   const hudH = 0.075 * H;
   const screen: Rect = { x: 0, y: 0, w: W, h: H };
   const minGap = MIN_GAP_RATIO * R0;
-  return playerCount <= 2
+  return playerCount === 1 || playerCount === 2
     ? halfCircleTable(playerCount, W, H, center, hudH, screen, minGap)
     : cornerTable(playerCount, W, H, center, hudH, screen, minGap);
 }

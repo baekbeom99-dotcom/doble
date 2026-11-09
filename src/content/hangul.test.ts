@@ -1,6 +1,7 @@
 import { consonantSymbols, syllableSymbols } from './hangul';
+import type { SymbolDef } from './types';
 
-const valueOf = (s: { display: { kind: string } }) => (s.display as { value: string }).value;
+const valueOf = (s: SymbolDef) => (s.display as { value: string }).value;
 
 test('기본 자음 14개, 쌍자음 포함 19개', () => {
   expect(consonantSymbols(false)).toHaveLength(14);
