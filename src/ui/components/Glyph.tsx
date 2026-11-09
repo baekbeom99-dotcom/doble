@@ -11,10 +11,12 @@ interface Props {
   /** 상자 좌표를 이만큼 빼서 그린다 (부모 기준 좌표로 바꿀 때) */
   offset?: { x: number; y: number };
   hit?: boolean;
+  /** 힌트·회전 같은 추가 상태 클래스 */
+  className?: string;
   onTap?: (id: string) => void;
 }
 
-export function Glyph({ symbol, placement, facing, offset = { x: 0, y: 0 }, hit = false, onTap }: Props) {
+export function Glyph({ symbol, placement, facing, offset = { x: 0, y: 0 }, hit = false, className, onTap }: Props) {
   const { x, y, size, rotation } = placement;
   const box: CSSProperties = {
     left: x - size / 2 - offset.x,
@@ -25,7 +27,7 @@ export function Glyph({ symbol, placement, facing, offset = { x: 0, y: 0 }, hit 
   };
   return (
     <div
-      className={hit ? 'glyph glyph--hit' : 'glyph'}
+      className={['glyph', hit && 'glyph--hit', className].filter(Boolean).join(' ')}
       data-symbol={symbol.id}
       style={box}
       onPointerDown={onTap ? e => { e.preventDefault(); onTap(symbol.id); } : undefined}

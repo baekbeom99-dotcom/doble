@@ -142,3 +142,28 @@ body {
     padding: 24px;
   }
 }
+
+/* ---------- 경쟁 확장 ---------- */
+.glyph--hint { background: var(--hit); border-radius: 8px; animation: hint-blink 600ms ease-in-out infinite alternate; }
+@keyframes hint-blink { from { background: var(--hit); } to { background: transparent; } }
+.glyph--spin > span, .glyph--spin > img { animation: spin 1s linear infinite; }
+@keyframes spin { to { rotate: 360deg; } }
+
+.badge__team { font-size: .8em; background: #fff; border: 2px solid var(--ink); border-radius: 4px; padding: 1px 4px; }
+.tower { display: flex; flex-direction: column-reverse; gap: 2px; position: absolute; bottom: 100%; left: 50%; translate: -50% -4px; }
+.tower > i { display: block; width: 28px; height: 6px; background: var(--ink); border-radius: 2px; }
+
+.extras { position: absolute; display: flex; gap: 6px; align-items: center; justify-content: center; }
+.combo { background: var(--hit); border: 3px solid var(--ink); border-radius: 8px; padding: 2px 8px; font-size: 16px; white-space: nowrap; }
+.item-btn, .target-btn {
+  font: inherit;
+  height: 100%;
+  min-width: 44px;
+  border: 3px solid var(--ink);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(43, 43, 43, .2);
+  cursor: pointer;
+}
+.item-btn { font-size: 22px; padding: 0 6px; }
+.target-btn { font-size: 13px; padding: 0 6px; max-width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

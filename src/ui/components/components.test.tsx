@@ -1,11 +1,11 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { SymbolDef } from '../../content/types';
 import type { Placement } from '../../engine/layout';
 import type { SeatGeom } from '../../engine/seats';
 import { CenterCard } from './CenterCard';
 import { Glyph } from './Glyph';
 import { Hud } from './Hud';
-import { SeatView } from './SeatView';
+import { extrasRect, SeatView } from './SeatView';
 
 const ko: SymbolDef = { id: 'ko-s:가', display: { kind: 'text', value: '가' }, speech: '가', lang: 'ko-KR', tags: {} };
 const ko2: SymbolDef = { id: 'ko-s:고', display: { kind: 'text', value: '고' }, speech: '고', lang: 'ko-KR', tags: {} };
@@ -63,4 +63,50 @@ test('중앙 카드 아래쪽에 바닥 띠를 그린다', () => {
   const floor = screen.getByTestId('center-floor');
   expect(screen.getByTestId('center-card')).toContainElement(floor);
   expect(floor).toHaveStyle({ height: '15%' });
+});
+
+const baseProps = {
+  index: 0, geom, color: 'pink' as const, symbols: syms, placements: pls, score: 0, name: '민지', showName: false,
+  locked: false, flash: null, correctSymbol: null, onTap: () => {},
+};
+
+test('아이템 버튼을 누르면 onUseItem을 부른다', () => {
+  const onUseItem = vi.fn();
+  render(<SeatView {...baseProps} item="freeze" onUseItem={onUseItem} />);
+  fireEvent.pointerDown(screen.getByRole('button', { name: '얼리기' }));
+  expect(onUseItem).toHaveBeenCalled();
+});
+test('콤보 2 이상이면 표시하고, 1이면 표시하지 않는다', () => {
+  const { rerender } = render(<SeatView {...baseProps} streak={3} />);
+  expect(screen.getByText('콤보 3')).toBeInTheDocument();
+  rerender(<SeatView {...baseProps} streak={1} />);
+  expect(screen.queryByText(/콤보/)).not.toBeInTheDocument();
+});
+test('폭탄 대상 버튼을 누르면 그 사람 번호를 넘긴다', () => {
+  const onPickTarget = vi.fn();
+  render(<SeatView {...baseProps} targets={[{ index: 2, name: '엄마', color: 'yellow' }]} onPickTarget={onPickTarget} />);
+  fireEvent.pointerDown(screen.getByRole('button', { name: '엄마에게' }));
+  expect(onPickTarget).toHaveBeenCalledWith(2);
+});
+test('힌트 글자와 회전 상태를 클래스로 표시한다', () => {
+  render(<SeatView {...baseProps} hintSymbol="ko-s:고" spinning />);
+  expect(document.querySelector('[data-symbol="ko-s:고"]')).toHaveClass('glyph--hint');
+  expect(document.querySelector('[data-symbol="ko-s:가"]')).toHaveClass('glyph--spin');
+});
+test('팀과 탑을 표시한다', () => {
+  render(<SeatView {...baseProps} score={4} team={1} tower />);
+  expect(within(screen.getByTestId('badge-0')).getByText('B')).toBeInTheDocument();
+  expect(screen.getByTestId('tower-0').children).toHaveLength(4);
+});
+test('탑 그림은 10칸까지만 그린다', () => {
+  render(<SeatView {...baseProps} score={15} tower />);
+  expect(screen.getByTestId('tower-0').children).toHaveLength(10);
+});
+test('extrasRect는 배지에서 영역 안쪽으로 떨어진 칸이고 화면 안에 있다', () => {
+  const r = extrasRect(geom);
+  expect(r.y + r.h).toBeLessThanOrEqual(geom.badge.y);
+  expect(r.x).toBeGreaterThanOrEqual(0);
+  expect(r.x + r.w).toBeLessThanOrEqual(1024);
+  const top = extrasRect({ ...geom, facing: 180, badge: { x: 380, y: 60, w: 110, h: 56 } });
+  expect(top.y).toBeGreaterThanOrEqual(60 + 56);
 });
