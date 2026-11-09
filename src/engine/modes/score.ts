@@ -1,6 +1,7 @@
 import type { Mode } from '../state';
 
-export const score: Mode = {
+/** 맞힌 값만큼 score를 올리고, scoreRounds 라운드가 끝나면 종료하는 공통 규칙 */
+export const pointsMode: Mode = {
   init: () => ({}),
   onCorrect: (s, player, value) => ({
     state: { ...s, players: s.players.map((p, i) => (i === player ? { ...p, score: p.score + value } : p)) },
@@ -10,3 +11,5 @@ export const score: Mode = {
   onTick: s => ({ state: s }),
   isOver: s => s.round.index >= s.config.scoreRounds,
 };
+
+export const score: Mode = pointsMode;

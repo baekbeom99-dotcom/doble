@@ -1,6 +1,7 @@
 import { createGame, reduce } from '../reducer';
 import { DEFAULT_BOMB, NO_RULES, type GameConfig, type GameState } from '../state';
 import { MODES } from './index';
+import { TEST_POOL, testConfig } from '../testConfig';
 
 const pool = Array.from({ length: 21 }, (_, i) => `s${i}`);
 const base: Omit<GameConfig, 'mode' | 'players'> = {
@@ -32,4 +33,13 @@ test('점수제: 먼저 맞힌 사람이 1점을 얻고, scoreRounds 라운드 �
 test('점수제: 시간이 흘러도 끝나지 않는다', () => {
   const s = createGame(duoCfg, pool, MODES);
   expect(reduce(s, { type: 'TICK', dt: 600000 }, MODES).state.phase).toBe('playing');
+});
+
+test('탑 쌓기: 맞히면 값만큼 탑이 높아지고 scoreRounds 뒤에 끝난다', () => {
+  let s = createGame(testConfig({ mode: 'tower', scoreRounds: 2, rules: { combo: false, finalRound: true, items: false } }), TEST_POOL, MODES);
+  s = reduce(s, { type: 'TAP', player: 0, symbol: s.round.answers[0], round: 0 }, MODES).state;
+  expect(s.players[0].score).toBe(1);
+  s = reduce(s, { type: 'TAP', player: 0, symbol: s.round.answers[0], round: 1 }, MODES).state;
+  expect(s.players[0].score).toBe(4);
+  expect(s.phase).toBe('over');
 });

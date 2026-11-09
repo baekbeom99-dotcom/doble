@@ -1,5 +1,5 @@
 import { createGame, reduce } from './reducer';
-import { DEFAULT_BOMB, NO_RULES, type GameConfig, type GameEvent, type GameState, type Mode } from './state';
+import { DEFAULT_BOMB, NO_RULES, type GameConfig, type GameEvent, type GameState, type Mode, type ModeTable } from './state';
 import { MODES } from './modes';
 import { TEST_POOL, testConfig } from './testConfig';
 
@@ -8,7 +8,7 @@ const fake: Mode = {
   onCorrect: (s) => ({ state: { ...s, mode: { correct: s.mode.correct + 1 } }, nextRound: true }),
   onWrong: s => s, onTick: s => ({ state: s }), isOver: s => s.mode.correct >= 3,
 };
-const modes = { soloSurvival: fake, score: fake };
+const modes: ModeTable = { soloSurvival: fake, score: fake, tower: fake };
 const pool = Array.from({ length: 21 }, (_, i) => `s${i}`);
 const cfg: GameConfig = {
   mode: 'score', players: [{ name: 'A', color: 'pink', cardSize: 4 }, { name: 'B', color: 'sky', cardSize: 6 }],

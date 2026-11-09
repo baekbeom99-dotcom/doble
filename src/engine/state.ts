@@ -1,7 +1,7 @@
 import type { SetConfig } from '../content/types';
 import type { SeatColor } from './seats';
 
-export type ModeId = 'soloSurvival' | 'score';
+export type ModeId = 'soloSurvival' | 'score' | 'tower';
 export type ItemId = 'freeze' | 'swirl' | 'hint' | 'shield';
 
 export interface PlayerConfig { name: string; color: SeatColor; cardSize: number }
