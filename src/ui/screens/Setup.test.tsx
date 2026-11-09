@@ -142,3 +142,12 @@ test('3인 팀 보정은 화면에 보이는(제한된) 심볼 수를 기준으�
   expect(cfg.players[0].cardSize).toBe(7);
   expect(cfg.players[2].cardSize).toBe(5);
 });
+test('협동은 1~4명이고 대결 방식이 없다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="coop" onStart={onStart} onBack={() => {}} />);
+  await waitLoaded();
+  expect(screen.getByRole('heading', { name: '협동' })).toBeInTheDocument();
+  expect(within(screen.getByRole('group', { name: '인원' })).getAllByRole('radio')).toHaveLength(4);
+  expect(screen.queryByRole('group', { name: '대결 방식' })).not.toBeInTheDocument();
+  expect(await startWith(onStart)).toMatchObject({ mode: 'coop', teams: null, rules: { combo: false, finalRound: false, items: false } });
+});

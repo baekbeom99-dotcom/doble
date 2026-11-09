@@ -20,7 +20,7 @@ export function CoopPanel({ coop, attackEvery, banner }: Props) {
     <div className="coop">
       {banner && <div className="coop__banner">{banner}</div>}
       <div className="coop__head">
-        <Monster stage={stage} size={44} />
+        <Monster stage={stage} size={52} />
         <div className="coop__stats">
           <span className="coop__stage">{stage}단계</span>
           <span className="meter meter--hp" aria-label={`몬스터 체력 ${hp}/${maxHp}`}>

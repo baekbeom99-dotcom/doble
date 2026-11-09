@@ -5,12 +5,12 @@ import type { SetConfig, SymbolDef } from '../../content/types';
 import { SEAT_COLORS, type SeatColor } from '../../engine/seats';
 import { ALL_RULES, NO_RULES, type BombConfig, type GameConfig, type ModeId, type Rules } from '../../engine/state';
 
-export type SetupKind = 'solo' | 'versus' | 'team';
+export type SetupKind = 'solo' | 'versus' | 'team' | 'coop';
 type Method = Extract<ModeId, 'score' | 'tower' | 'bomb'>;
 
-const TITLES: Record<SetupKind, string> = { solo: '혼자 하기', versus: '같이 하기', team: '팀 대결' };
-const COUNTS: Record<SetupKind, number[]> = { solo: [1], versus: [2, 3, 4], team: [3, 4] };
-const DEFAULT_COUNT: Record<SetupKind, number> = { solo: 1, versus: 2, team: 4 };
+const TITLES: Record<SetupKind, string> = { solo: '혼자 하기', versus: '같이 하기', team: '팀 대결', coop: '협동' };
+const COUNTS: Record<SetupKind, number[]> = { solo: [1], versus: [2, 3, 4], team: [3, 4], coop: [1, 2, 3, 4] };
+const DEFAULT_COUNT: Record<SetupKind, number> = { solo: 1, versus: 2, team: 4, coop: 2 };
 const COLOR_NAMES: Record<SeatColor, string> = { pink: '핑크', sky: '하늘', yellow: '노랑', lime: '연두', purple: '보라' };
 const METHOD_NAMES: Record<Method, string> = { score: '점수제', tower: '탑 쌓기', bomb: '폭탄 돌리기' };
 const RULE_NAMES: Record<keyof Rules, string> = { combo: '콤보', finalRound: '막판 3배', items: '아이템' };
@@ -56,6 +56,9 @@ function Check(props: { label: string; checked: boolean; onChange: (v: boolean) 
 
 export function Setup({ kind, onStart, onBack }: Props) {
   const solo = kind === 'solo';
+  const coopKind = kind === 'coop';
+  // 대결 방식·덧붙는 요소·라운드 수는 같이 하기와 팀 대결에만 있다
+  const versusLike = kind === 'versus' || kind === 'team';
   const team = kind === 'team';
   const [count, setCount] = useState(DEFAULT_COUNT[kind]);
   const [names, setNames] = useState(['플레이어 1', '플레이어 2', '플레이어 3', '플레이어 4']);
@@ -119,7 +122,7 @@ export function Setup({ kind, onStart, onBack }: Props) {
       cardSize: clampSize(sizes[i], limit),
     }));
     onStart({
-      mode: solo ? 'soloSurvival' : method,
+      mode: solo ? 'soloSurvival' : coopKind ? 'coop' : method,
       players,
       set: setConfig,
       rotationStep,
@@ -127,7 +130,7 @@ export function Setup({ kind, onStart, onBack }: Props) {
       speech,
       scoreRounds: rounds,
       seed: Date.now(),
-      rules: solo ? NO_RULES : rules,
+      rules: versusLike ? rules : NO_RULES,
       teams: team ? teamsFor(count) : null,
       bomb,
     }, syms);
@@ -208,7 +211,7 @@ export function Setup({ kind, onStart, onBack }: Props) {
         </div>
       </fieldset>
 
-      {!solo && (
+      {versusLike && (
         <>
           <fieldset className="field" aria-label="대결 방식">
             <legend>대결 방식</legend>

@@ -48,3 +48,9 @@ test('이름이 같은 플레이어가 있어도 React 키 경고가 나지 않�
   expect(spy).not.toHaveBeenCalled();
   spy.mockRestore();
 });
+test('협동 결과는 물리친 몬스터 수와 단계를 보여준다', () => {
+  const s = createGame(testConfig({ mode: 'coop' }), TEST_POOL, MODES);
+  show({ ...s, coop: { ...s.coop!, stage: 4 } });
+  expect(screen.getByText('3마리 물리쳤어요')).toBeInTheDocument();
+  expect(screen.getByText('4단계까지 갔어요')).toBeInTheDocument();
+});

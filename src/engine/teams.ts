@@ -33,6 +33,7 @@ type Entry = Omit<Standing, 'rank' | 'winner' | 'bomb'>;
 function entries(s: GameState): Entry[] {
   const { config } = s;
   if (config.mode === 'soloSurvival') return [{ label: config.players[0].name, players: [0], value: s.mode.correct }];
+  if (config.mode === 'coop') return [{ label: '우리 팀', players: config.players.map((_, i) => i), value: s.coop?.stage ?? 1 }];
   const teams = config.teams;
   if (teams) {
     return TEAM_NAMES.map((label, t) => {

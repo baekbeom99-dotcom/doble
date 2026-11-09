@@ -171,7 +171,7 @@ export function Game({ config, symbols, onOver }: Props) {
           placements={layouts.seats[i]}
           score={solo ? state.mode.correct : state.players[i].score}
           name={config.players[i].name}
-          showName={config.players.length <= 2}
+          showName={config.players.length <= 2 && !isCoop}
           locked={state.now < state.players[i].lockedUntil}
           flash={freeze?.player === i ? 'correct' : wrongFlash.has(i) ? 'wrong' : null}
           correctSymbol={freeze?.player === i ? freeze.symbol : null}

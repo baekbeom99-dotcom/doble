@@ -8,6 +8,7 @@ export function Home({ onPick }: { onPick: (kind: SetupKind) => void }) {
         <button className="btn btn--big" style={{ background: '#FFE14D' }} onClick={() => onPick('solo')}>혼자 하기</button>
         <button className="btn btn--big" style={{ background: '#FF8FB8' }} onClick={() => onPick('versus')}>같이 하기</button>
         <button className="btn btn--big" style={{ background: '#7FDBFF' }} onClick={() => onPick('team')}>팀 대결</button>
+        <button className="btn btn--big" style={{ background: '#B8F26B' }} onClick={() => onPick('coop')}>협동</button>
       </div>
     </main>
   );

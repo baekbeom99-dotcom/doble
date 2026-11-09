@@ -15,6 +15,11 @@ export function Result({ state, onRetry, onHome }: Props) {
       <h1 className="title">결과</h1>
       {solo ? (
         <p className="big-result">{state.mode.correct}개 찾았어요</p>
+      ) : state.coop ? (
+        <>
+          <p className="big-result">{state.coop.stage - 1}마리 물리쳤어요</p>
+          <p className="sub-result">{state.coop.stage}단계까지 갔어요</p>
+        </>
       ) : (
         <ul className="ranking">
           {standings(state).map(st => (

@@ -35,3 +35,9 @@ test('서바이벌은 찾은 개수 하나를 돌려준다', () => {
     { rank: 1, label: 'P0', players: [0], value: 12, winner: true, bomb: false },
   ]);
 });
+test('협동 순위는 우리 팀 하나이고 값은 단계', () => {
+  const s = createGame(testConfig({ mode: 'coop' }), TEST_POOL, MODES);
+  expect(standings({ ...s, coop: { ...s.coop!, stage: 4 } })).toEqual([
+    { rank: 1, label: '우리 팀', players: [0, 1], value: 4, winner: true, bomb: false },
+  ]);
+});
