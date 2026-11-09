@@ -1,6 +1,7 @@
 import { generateRound } from './cardGen';
 import { updateStreaks } from './modifiers/combo';
 import { correctValue } from './modifiers/finalRound';
+import { maybeGrantItem, useItem } from './modifiers/items';
 import { createRng } from './rng';
 import {
   LOCK_MS,
@@ -13,7 +14,8 @@ import {
   type RoundState,
 } from './state';
 
-export const ROUND_SEED_STEP = 7919;
+import { ROUND_SEED_STEP } from './state';
+export { ROUND_SEED_STEP };
 
 type Step = { state: GameState; events: GameEvent[] };
 
@@ -60,7 +62,9 @@ function handleTap(s: GameState, a: Extract<Action, { type: 'TAP' }>, modes: Mod
   const value = correctValue(s, a.player);
   const res = mode.onCorrect(s, a.player, value);
   const events: GameEvent[] = [{ type: 'correct', player: a.player, symbol: a.symbol, value }, ...(res.events ?? [])];
-  let state = updateStreaks(res.state, a.player, true);
+  const granted = maybeGrantItem(updateStreaks(res.state, a.player, true), a.player);
+  let state = granted.state;
+  events.push(...granted.events);
   if (res.nextRound) {
     const next = nextRound(state);
     state = next.state;
@@ -74,12 +78,20 @@ function handleTick(s: GameState, dt: number, modes: ModeTable): Step {
   return { state: res.state, events: res.events ?? [] };
 }
 
+function handleUseItem(s: GameState, player: number): Step | null {
+  const p = s.players[player];
+  if (!p || s.now < p.lockedUntil) return null;
+  const step = useItem(s, player);
+  return step.events.length ? step : null;
+}
+
 export function reduce(s: GameState, a: Action, modes: ModeTable): Step {
   if (s.phase !== 'playing') return { state: s, events: [] };
 
   let step: Step | null = null;
   if (a.type === 'TAP') step = handleTap(s, a, modes);
   else if (a.type === 'TICK') step = handleTick(s, a.dt, modes);
+  else if (a.type === 'USE_ITEM') step = handleUseItem(s, a.player);
   if (!step) return { state: s, events: [] };
 
   if (modes[s.config.mode].isOver(step.state)) {

@@ -91,3 +91,6 @@ export interface Mode {
 export type ModeTable = Record<ModeId, Mode>;
 
 export const LOCK_MS = 1500;
+
+/** 라운드마다 난수 시드를 바꾸는 간격 */
+export const ROUND_SEED_STEP = 7919;
