@@ -1,5 +1,6 @@
 import { challengeCanTap, challengeCorrect, startChallenge, tickChallenge } from '../coop/defense';
-import { applyDamage, freshMonster, HEARTS_START, NO_MISSION, setCoop, WRONG_PENALTY_MS } from '../coop/monster';
+import { makeMission, missionProgress } from '../coop/missions';
+import { applyDamage, freshMonster, HEARTS_START, setCoop, WRONG_PENALTY_MS } from '../coop/monster';
 import type { CoopState, GameEvent, Mode } from '../state';
 
 export const coop: Mode = {
@@ -8,21 +9,25 @@ export const coop: Mode = {
     hearts: HEARTS_START,
     attackCount: 0,
     symbols: ctx.symbols,
-    ...(freshMonster(1, config.players.length, NO_MISSION) as Omit<CoopState, 'hearts' | 'attackCount' | 'symbols'>),
+    ...(freshMonster(1, config.players.length, makeMission(config, ctx.symbols, 1)) as Omit<CoopState, 'hearts' | 'attackCount' | 'symbols'>),
   }),
 
   canTap: (s, player) => (s.coop!.challenge ? challengeCanTap(s, player) : !s.coop!.answered[player]),
 
-  onCorrect: (s, player) => {
+  onCorrect: (before, player) => {
+    // 미션 진행도를 먼저 올린다. 보상으로 몬스터가 쓰러지면 새 몬스터와 새 라운드
+    const mission = missionProgress(before, before.round.answers[player]);
+    const s = mission.state;
+    if (s.coop!.stage !== before.coop!.stage) return { state: s, nextRound: true, events: mission.events };
     // 방어 챌린지 중: 정답 피해 없이 챌린지만 진행하고, 매번 새 라운드
     if (s.coop!.challenge) {
       const r = challengeCorrect(s, player);
-      return { state: r.state, nextRound: true, events: r.events };
+      return { state: r.state, nextRound: true, events: [...mission.events, ...r.events] };
     }
     const stage = s.coop!.stage;
     const answered = s.coop!.answered.map((a, i) => a || i === player);
     const first = applyDamage(setCoop(s, { answered }), 1, false);
-    const events: GameEvent[] = [...first.events];
+    const events: GameEvent[] = [...mission.events, ...first.events];
     let state = first.state;
     // 몬스터가 쓰러졌으면 새 몬스터와 새 라운드
     if (state.coop!.stage !== stage) return { state, nextRound: true, events };

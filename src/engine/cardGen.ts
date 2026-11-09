@@ -26,6 +26,11 @@ export function generateRound(opts: {
   }
 
   const center = rng.sample(pool, centerSize);
+  // 우선 대상이 중앙 카드에 없으면 일정 확률로 한 장을 끼워 넣는다 (대상이 한 장뿐인 미션도 나오게)
+  if (preferAnswer && !center.some(preferAnswer) && rng.next() < PREFER_CHANCE) {
+    const candidates = pool.filter(preferAnswer);
+    if (candidates.length > 0) center[rng.int(0, centerSize - 1)] = rng.pick(candidates);
+  }
   const outside = pool.filter(id => !center.includes(id));
   const distinct = playerSizes.length <= centerSize;
 
