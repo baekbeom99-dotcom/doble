@@ -52,20 +52,47 @@ function ellipseGap(e: Ellipse, px: number, py: number): number {
   return min;
 }
 
-export function computeTable(playerCount: 1 | 2 | 3 | 4, W: number, H: number): TableGeom {
+/** 정보 칸 크기. 협동은 몬스터·미션을 담느라 크게(tallHud) 잡는다 */
+interface HudBox { w: number; h: number }
+
+export interface TableOptions {
+  /** 협동용 큰 정보 칸 (0.2W × 0.2H) */
+  tallHud?: boolean;
+}
+
+/** 자리 영역(타원)이 정보 칸과 겹치지 않는지 (정보 칸의 격자 점 검사) */
+function clearOf(e: Ellipse, rects: Rect[]): boolean {
+  const steps = 6;
+  for (const r of rects) {
+    for (let i = 0; i <= steps; i++) for (let j = 0; j <= steps; j++) {
+      const x = r.x + (r.w * i) / steps, y = r.y + (r.h * j) / steps;
+      const dx = (x - e.cx) / e.rx, dy = (y - e.cy) / e.ry;
+      if (dx * dx + dy * dy <= 1) return false;
+    }
+  }
+  return true;
+}
+
+export function computeTable(playerCount: 1 | 2 | 3 | 4, W: number, H: number, opts: TableOptions = {}): TableGeom {
   const R0 = CENTER_RATIO * Math.min(W, H);
   const center: Ellipse = { cx: W / 2, cy: H / 2, rx: R0, ry: R0 };
   const hudH = 0.075 * H;
+  const box: HudBox = opts.tallHud ? { w: 0.2 * W, h: 0.2 * H } : { w: 0.16 * W, h: hudH };
   const screen: Rect = { x: 0, y: 0, w: W, h: H };
   const minGap = MIN_GAP_RATIO * R0;
   return playerCount === 1 || playerCount === 2
-    ? halfCircleTable(playerCount, W, H, center, hudH, screen, minGap)
-    : cornerTable(playerCount, W, H, center, hudH, screen, minGap);
+    ? halfCircleTable(playerCount, W, H, center, hudH, box, screen, minGap)
+    : cornerTable(playerCount, W, H, center, hudH, box, screen, minGap);
 }
 
-function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: number, screen: Rect, minGap: number): TableGeom {
+function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number): TableGeom {
+  const hudRects: Rect[] = [{ x: 0.02 * W, y: H - 0.02 * H - box.h, w: box.w, h: box.h }];
+  if (n === 2) hudRects.push({ x: W - 0.02 * W - box.w, y: 0.02 * H, w: box.w, h: box.h });
   const gapOf = (r: number) => Math.hypot(W - 0.94 * r - center.cx, H - center.cy) - r - center.rx;
-  const r = shrinkUntil(0.4 * H, v => gapOf(v) >= minGap);
+  const r = shrinkUntil(0.4 * H, v =>
+    gapOf(v) >= minGap &&
+    clearOf({ cx: W - 0.94 * v, cy: H, rx: v, ry: v }, hudRects) &&
+    (n === 1 || clearOf({ cx: 0.94 * v, cy: 0, rx: v, ry: v }, hudRects)));
 
   const bw = 0.11 * W;
   const cos = Math.cos((20 * Math.PI) / 180), sin = Math.sin((20 * Math.PI) / 180);
@@ -76,7 +103,7 @@ function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: 
     facing: 0,
     badge: centeredRect(bottom.cx - r * cos, bottom.cy - r * sin, bw, hudH),
   }];
-  const hud: TableGeom['hud'] = [{ rect: { x: 0.02 * W, y: H - 0.02 * H - hudH, w: 0.16 * W, h: hudH }, facing: 0 }];
+  const hud: TableGeom['hud'] = [{ rect: hudRects[0], facing: 0 }];
 
   if (n === 2) {
     const top = { cx: 0.94 * r, cy: 0 };
@@ -86,7 +113,7 @@ function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: 
       facing: 180,
       badge: centeredRect(top.cx + r * cos, top.cy + r * sin, bw, hudH),
     });
-    hud.push({ rect: { x: W - 0.18 * W, y: 0.02 * H, w: 0.16 * W, h: hudH }, facing: 180 });
+    hud.push({ rect: hudRects[1], facing: 180 });
   }
   return { center, seats, hud };
 }
@@ -99,13 +126,15 @@ const CORNERS = [
   { left: true, bottom: false },
 ];
 
-function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: number, screen: Rect, minGap: number): TableGeom {
-  // 가로·세로 반지름을 같은 비율(scale)로 줄인다
+function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number): TableGeom {
+  const y = H / 2 - box.h / 2;
+  const hudRects: Rect[] = [{ x: 0.02 * W, y, w: box.w, h: box.h }, { x: W - 0.02 * W - box.w, y, w: box.w, h: box.h }];
+  // 가로·세로 반지름을 같은 비율(scale)로 줄인다. 대칭이라 왼쪽 위 타원으로 검사한다
   const fits = (scale: number) => {
     const rx = 0.3 * W * scale, ry = 0.29 * H * scale;
     if ((4 * rx) / 3 > W / 2 - 4 || (4 * ry) / 3 > H / 2 - 4) return false;
     const e = { cx: rx / 3, cy: ry / 3, rx, ry };
-    return ellipseGap(e, center.cx, center.cy) - center.rx >= minGap;
+    return ellipseGap(e, center.cx, center.cy) - center.rx >= minGap && clearOf(e, hudRects);
   };
   const scale = shrinkUntil(1, fits);
   const rx = 0.3 * W * scale, ry = 0.29 * H * scale;
@@ -123,10 +152,9 @@ function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: numb
       badge: centeredRect(left ? cx + rx : cx - rx, cy, bw, hudH),
     };
   });
-  const y = H / 2 - hudH / 2;
   const hud: TableGeom['hud'] = [
-    { rect: { x: 0.02 * W, y, w: 0.16 * W, h: hudH }, facing: 0 },
-    { rect: { x: W - 0.18 * W, y, w: 0.16 * W, h: hudH }, facing: 180 },
+    { rect: hudRects[0], facing: 0 },
+    { rect: hudRects[1], facing: 180 },
   ];
   return { center, seats, hud };
 }

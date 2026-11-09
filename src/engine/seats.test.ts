@@ -101,3 +101,21 @@ describe('shrinkUntil', () => {
     expect(computeTable(2, 4, 4).seats).toHaveLength(2);
   });
 });
+
+describe.each(VIEWPORTS)('tallHud %ix%i', (W, H) => {
+  test.each(COUNTS)('%i인: 정보 칸이 0.2H 높이이고 자리·중앙 카드와 겹치지 않으며 글자 8개가 들어간다', n => {
+    const t = computeTable(n, W, H, { tallHud: true });
+    expect(t.hud.length).toBe(n === 1 ? 1 : 2);
+    for (const h of t.hud) {
+      expect(h.rect.h).toBeCloseTo(0.2 * H);
+      expect(h.rect.w).toBeCloseTo(0.2 * W);
+      expect(inside(W, H, h.rect)).toBe(true);
+      expect(rectCircleDist(h.rect, t)).toBeGreaterThan(t.center.rx);
+      for (const [x, y] of gridPoints(h.rect, 4)) expect(t.seats.some(s => pointInRegion(x, y, s.region))).toBe(false);
+      for (const s of t.seats) expect(overlap(h.rect, s.badge)).toBe(false);
+    }
+    for (let seed = 0; seed < 10; seed++) for (const s of t.seats) {
+      expect(() => layoutSymbols({ region: s.region, exclusions: [s.badge], count: 8, rng: createRng(seed) })).not.toThrow();
+    }
+  });
+});
