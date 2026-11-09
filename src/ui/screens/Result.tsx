@@ -18,7 +18,7 @@ export function Result({ state, onRetry, onHome }: Props) {
       ) : (
         <ul className="ranking">
           {standings(state).map(st => (
-            <li key={st.label} className="rank">
+            <li key={st.players.join('-')} className="rank">
               <span className="rank__number" data-testid="rank-number">{st.rank}</span>
               <span className="dots">
                 {st.players.map(i => <span key={i} className="dot" style={{ background: SEAT_COLORS[config.players[i].color] }} />)}

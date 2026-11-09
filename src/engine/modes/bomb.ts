@@ -52,8 +52,10 @@ export const bomb: Mode = {
     const count = Math.min(value, state.players[player].score);
     // 마지막 라운드에서는 기다리지 않고 바로 넘겨서 게임이 제때 끝나게 한다
     const lastRound = state.round.index >= state.config.scoreRounds - 1;
+    // 상대가 한 명뿐이면 고를 필요가 없으니 바로 넘긴다
+    const onlyOne = opponentsOf(state, player).length === 1;
     if (count > 0) {
-      if (state.config.bomb.target === 'random' || lastRound) {
+      if (state.config.bomb.target === 'random' || lastRound || onlyOne) {
         const r = give(state, player, randomTarget(state, player), count);
         state = r.state;
         events.push(...r.events);

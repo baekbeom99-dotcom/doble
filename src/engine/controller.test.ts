@@ -28,3 +28,12 @@ test('구독을 해제하면 더 이상 알림을 받지 않는다', () => {
   c.frame(0); c.frame(16);
   expect(fn).not.toHaveBeenCalled();
 });
+test('hold 동안에는 시간이 흐르지 않는다', () => {
+  const c = new GameController(createGame(soloCfg, pool, MODES), MODES);
+  c.frame(0); c.frame(16);
+  c.hold(400);
+  for (let t = 32; t <= 400; t += 16) c.frame(t);
+  expect(c.getState().now).toBe(16);
+  c.frame(432); c.frame(448);
+  expect(c.getState().now).toBeGreaterThan(16);
+});

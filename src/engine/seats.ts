@@ -28,6 +28,15 @@ export interface TableGeom {
 const CENTER_RATIO = 0.22;
 const MIN_GAP_RATIO = 0.2;
 const SHRINK = 0.95;
+/** 화면이 아주 작아 조건을 끝내 만족하지 못할 때 무한히 줄이지 않도록 하는 상한 */
+const MAX_SHRINK_STEPS = 100;
+
+/** 조건을 만족할 때까지 값을 0.95배씩 줄인다. 최대 100번까지만 줄인다 */
+export function shrinkUntil(start: number, fits: (v: number) => boolean): number {
+  let v = start;
+  for (let i = 0; i < MAX_SHRINK_STEPS && !fits(v); i++) v *= SHRINK;
+  return v;
+}
 
 function centeredRect(cx: number, cy: number, w: number, h: number): Rect {
   return { x: cx - w / 2, y: cy - h / 2, w, h };
@@ -55,9 +64,8 @@ export function computeTable(playerCount: 1 | 2 | 3 | 4, W: number, H: number): 
 }
 
 function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: number, screen: Rect, minGap: number): TableGeom {
-  let r = 0.4 * H;
   const gapOf = (r: number) => Math.hypot(W - 0.94 * r - center.cx, H - center.cy) - r - center.rx;
-  while (gapOf(r) < minGap) r *= SHRINK;
+  const r = shrinkUntil(0.4 * H, v => gapOf(v) >= minGap);
 
   const bw = 0.11 * W;
   const cos = Math.cos((20 * Math.PI) / 180), sin = Math.sin((20 * Math.PI) / 180);
@@ -92,13 +100,15 @@ const CORNERS = [
 ];
 
 function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: number, screen: Rect, minGap: number): TableGeom {
-  let rx = 0.3 * W, ry = 0.29 * H;
-  const fits = () => {
+  // 가로·세로 반지름을 같은 비율(scale)로 줄인다
+  const fits = (scale: number) => {
+    const rx = 0.3 * W * scale, ry = 0.29 * H * scale;
     if ((4 * rx) / 3 > W / 2 - 4 || (4 * ry) / 3 > H / 2 - 4) return false;
     const e = { cx: rx / 3, cy: ry / 3, rx, ry };
     return ellipseGap(e, center.cx, center.cy) - center.rx >= minGap;
   };
-  while (!fits()) { rx *= SHRINK; ry *= SHRINK; }
+  const scale = shrinkUntil(1, fits);
+  const rx = 0.3 * W * scale, ry = 0.29 * H * scale;
 
   const positions = n === 4 ? [0, 1, 2, 3] : [0, 1, 3];
   const bw = 0.07 * W;

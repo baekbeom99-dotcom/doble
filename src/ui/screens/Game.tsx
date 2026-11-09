@@ -64,7 +64,8 @@ export function Game({ config, symbols, onOver }: Props) {
           setWrongFlash(prev => new Set(prev).add(e.player));
           timers.push(setTimeout(() => setWrongFlash(prev => { const n = new Set(prev); n.delete(e.player); return n; }), FLASH_MS));
         }
-        if (e.type === 'over') onOverRef.current(s);
+        // 마지막 정답 강조를 보여준 뒤에 결과 화면으로 넘어간다
+        if (e.type === 'over') timers.push(setTimeout(() => onOverRef.current(s), FLASH_MS));
       }
     });
     controller.start();
@@ -107,6 +108,8 @@ export function Game({ config, symbols, onOver }: Props) {
     const events = controller.dispatch({ type: 'TAP', player, symbol, round: round.index });
     if (events.some(e => e.type === 'round')) {
       setFreeze({ round: before.round, player, symbol });
+      // 정답 강조를 보여주는 동안 게임 시간을 멈춘다 (서바이벌 +1초가 줄지 않게)
+      controller.hold(FLASH_MS);
       if (freezeTimer.current) clearTimeout(freezeTimer.current);
       freezeTimer.current = setTimeout(() => { freezeTimer.current = null; setFreeze(null); }, FLASH_MS);
     }

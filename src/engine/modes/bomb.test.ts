@@ -43,21 +43,22 @@ test('대상 고르기: 고르면 그 사람에게, 3초가 지나면 무작위�
   expect(t.players[1].score).toBe(2);
 });
 test('대기 중에 또 맞히면 이전 넘기기를 먼저 무작위로 처리한다', () => {
-  let s = createGame(bombCfg({ bomb: { startHand: 3, target: 'choose' } }), TEST_POOL, MODES);
+  let s = createGame(bombCfg({ players: three, bomb: { startHand: 3, target: 'choose' } }), TEST_POOL, MODES);
   s = tap(s, 0).state; s = tap(s, 0).state;
-  expect(s.players.map(p => p.score)).toEqual([2, 4]);
+  expect(s.players[0].score).toBe(2);
+  expect(s.players.reduce((n, p) => n + p.score, 0)).toBe(9);
   expect(pendingChoice(s)).toEqual({ from: 0, count: 1, until: expect.any(Number) });
 });
 test('대기 중인 넘기기로 0장이 되기 전에는 끝나지 않는다', () => {
-  let s = createGame(bombCfg({ bomb: { startHand: 1, target: 'choose' } }), TEST_POOL, MODES);
+  let s = createGame(bombCfg({ players: three, bomb: { startHand: 1, target: 'choose' } }), TEST_POOL, MODES);
   s = tap(s, 0).state;
   expect(s.phase).toBe('playing');
   const r = reduce(s, { type: 'CHOOSE_TARGET', player: 0, target: 1 }, MODES);
-  expect(r.state.players.map(p => p.score)).toEqual([0, 2]);
+  expect(r.state.players.map(p => p.score)).toEqual([0, 2, 1]);
   expect(r.state.phase).toBe('over');
 });
 test('대기 중인 사람만, 상대만 고를 수 있다', () => {
-  let s = createGame(bombCfg({ bomb: { startHand: 3, target: 'choose' } }), TEST_POOL, MODES);
+  let s = createGame(bombCfg({ players: three, bomb: { startHand: 3, target: 'choose' } }), TEST_POOL, MODES);
   s = tap(s, 0).state;
   expect(reduce(s, { type: 'CHOOSE_TARGET', player: 1, target: 0 }, MODES).events).toEqual([]);
   expect(reduce(s, { type: 'CHOOSE_TARGET', player: 0, target: 0 }, MODES).events).toEqual([]);
@@ -79,10 +80,17 @@ test('대기 중인 넘기기로 누군가 0장이 되면 새 대기를 만들�
   expect(r.state.phase).toBe('over');
 });
 test('마지막 라운드에서는 대기 없이 바로 넘기고 끝난다', () => {
-  let s = createGame(bombCfg({ scoreRounds: 2, bomb: { startHand: 5, target: 'choose' } }), TEST_POOL, MODES);
+  let s = createGame(bombCfg({ players: three, scoreRounds: 2, bomb: { startHand: 5, target: 'choose' } }), TEST_POOL, MODES);
   s = tap(s, 0).state;
   const r = tap(s, 1);
   expect(pendingChoice(r.state)).toBeNull();
   expect(r.state.phase).toBe('over');
-  expect(r.state.players.map(p => p.score)).toEqual([5, 5]);
+  expect(r.state.players.reduce((n, p) => n + p.score, 0)).toBe(15);
+});
+
+test('넘길 수 있는 상대가 한 명뿐이면 고르기 없이 바로 넘긴다', () => {
+  const s = createGame(bombCfg({ bomb: { startHand: 3, target: 'choose' } }), TEST_POOL, MODES);
+  const r = tap(s, 0);
+  expect(pendingChoice(r.state)).toBeNull();
+  expect(r.events).toContainEqual({ type: 'give', from: 0, to: 1, count: 1 });
 });

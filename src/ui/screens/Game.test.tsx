@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { syllableSymbols } from '../../content/hangul';
 import { MODES } from '../../engine/modes';
 import { createGame, reduce } from '../../engine/reducer';
@@ -115,6 +115,36 @@ test('게임 화면을 떠나면 남은 타이머를 모두 정리한다', () =>
     tapSeat(0, createGame(duoCfg, pool21, MODES).round.answers[0]);
     unmount();
     expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+test('서바이벌: 정답 강조를 보여주는 동안에는 시간이 줄지 않아 +1초가 그대로 남는다', () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance', 'Date'] });
+  try {
+    const cfg = testConfig({ mode: 'soloSurvival', players: [testConfig().players[0]] });
+    render(<Game config={cfg} symbols={symbols} onOver={() => {}} />);
+    act(() => { vi.advanceTimersByTime(16); });
+    tapSeat(0, createGame(cfg, pool21, MODES).round.answers[0]);
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(screen.getAllByText('31초').length).toBeGreaterThan(0);
+    act(() => { vi.advanceTimersByTime(1000); });
+    expect(screen.getAllByText('30초').length).toBeGreaterThan(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
+test('마지막 정답의 강조 표시를 보여준 뒤에 결과 화면으로 넘어간다', () => {
+  vi.useFakeTimers();
+  try {
+    const onOver = vi.fn();
+    const cfg = testConfig({ scoreRounds: 1 });
+    render(<Game config={cfg} symbols={symbols} onOver={onOver} />);
+    tapSeat(0, createGame(cfg, pool21, MODES).round.answers[0]);
+    expect(onOver).not.toHaveBeenCalled();
+    expect(screen.getByTestId('seat-0').querySelector('.glyph--hit')).not.toBeNull();
+    act(() => { vi.advanceTimersByTime(400); });
+    expect(onOver).toHaveBeenCalledTimes(1);
   } finally {
     vi.useRealTimers();
   }

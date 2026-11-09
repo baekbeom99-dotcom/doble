@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { INITIALS } from '../../content/hangul';
 import { createSymbolSet, maxCardSize, MAX_CARD_SIZE, MIN_CARD_SIZE } from '../../content/registry';
 import type { SetConfig, SymbolDef } from '../../content/types';
@@ -93,15 +93,26 @@ export function Setup({ kind, onStart, onBack }: Props) {
 
   const changeCount = (n: number) => {
     setCount(n);
-    // 3인 팀전으로 바뀌면 혼자인 사람(3번)의 심볼 수를 낮춘다
-    if (team && n === 3) setSizes(ss => ss.map((v, i) => (i === 2 ? Math.max(MIN_CARD_SIZE, ss[0] - LONE_HANDICAP) : v)));
+    if (!team) return;
+    // 3인 팀전이면 혼자인 사람(3번)의 심볼 수를 낮추고, 4인으로 돌아가면 1번과 같게 되돌린다.
+    // 기준은 화면에 보이는(세트 크기로 제한된) 1번의 심볼 수다
+    setSizes(ss => {
+      const base = clampSize(ss[0], sliderMax);
+      const third = n === 3 ? Math.max(MIN_CARD_SIZE, base - LONE_HANDICAP) : base;
+      return ss.map((v, i) => (i === 2 ? third : v));
+    });
   };
 
+  const starting = useRef(false);
+
   const start = async () => {
+    // 빠르게 두 번 눌러도 한 번만 시작한다
+    if (starting.current) return;
+    starting.current = true;
     // 세트를 아직 불러오는 중이면 기다렸다가 시작한다
     const syms = symbols ?? (await createSymbolSet(setConfig).loadSymbols());
     const limit = maxCardSize(syms.length);
-    if (limit === 0) return;
+    if (limit === 0) { starting.current = false; return; }
     const players = Array.from({ length: count }, (_, i) => ({
       name: names[i].trim() || `플레이어 ${i + 1}`,
       color: colors[i],

@@ -11,6 +11,7 @@ export class GameController {
   private listeners = new Set<Listener>();
   private last: number | null = null;
   private raf: number | null = null;
+  private holdLeft = 0;
 
   constructor(initial: GameState, private modes: ModeTable) {
     this.state = initial;
@@ -29,9 +30,18 @@ export class GameController {
   }
 
   frame(timestampMs: number): void {
-    const dt = this.last === null ? 0 : Math.min(MAX_DT, Math.max(0, timestampMs - this.last));
+    let dt = this.last === null ? 0 : Math.min(MAX_DT, Math.max(0, timestampMs - this.last));
     this.last = timestampMs;
+    // 멈춤 시간이 남아 있으면 그만큼 시간을 흘려보내지 않는다
+    const held = Math.min(dt, this.holdLeft);
+    this.holdLeft -= held;
+    dt -= held;
     if (dt > 0) this.dispatch({ type: 'TICK', dt });
+  }
+
+  /** ms 동안 게임 시간을 멈춘다 (정답 강조를 보여주는 동안 등) */
+  hold(ms: number): void {
+    this.holdLeft = Math.max(this.holdLeft, ms);
   }
 
   subscribe(fn: Listener): () => void {

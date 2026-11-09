@@ -104,3 +104,34 @@ test('혼자 하기는 덧붙는 요소가 모두 꺼져 있다', async () => {
   expect(screen.queryByRole('checkbox', { name: '아이템' })).not.toBeInTheDocument();
   expect(await startWith(onStart)).toMatchObject({ mode: 'soloSurvival', rules: { combo: false, finalRound: false, items: false }, teams: null });
 });
+test('시작 버튼을 빠르게 두 번 눌러도 한 번만 시작한다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
+  const start = screen.getByRole('button', { name: '시작' });
+  fireEvent.click(start); fireEvent.click(start);
+  await waitFor(() => expect(onStart).toHaveBeenCalled());
+  await new Promise(r => setTimeout(r, 20));
+  expect(onStart).toHaveBeenCalledTimes(1);
+});
+test('팀 대결을 3인에서 4인으로 되돌리면 3번 플레이어의 심볼 수도 돌아온다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="team" onStart={onStart} onBack={() => {}} />);
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '8'));
+  const people = within(screen.getByRole('group', { name: '인원' }));
+  fireEvent.click(people.getByRole('radio', { name: '3명' }));
+  fireEvent.click(people.getByRole('radio', { name: '4명' }));
+  const cfg = await startWith(onStart);
+  expect(cfg.players[2].cardSize).toBe(cfg.players[0].cardSize);
+});
+test('3인 팀 보정은 화면에 보이는(제한된) 심볼 수를 기준으로 한다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="team" onStart={onStart} onBack={() => {}} />);
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '8'));
+  setRange(screen.getByRole('slider', { name: '플레이어 1 심볼 수' }), 8);
+  fireEvent.click(screen.getByRole('radio', { name: '자음' }));
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '7'));
+  fireEvent.click(within(screen.getByRole('group', { name: '인원' })).getByRole('radio', { name: '3명' }));
+  const cfg = await startWith(onStart);
+  expect(cfg.players[0].cardSize).toBe(7);
+  expect(cfg.players[2].cardSize).toBe(5);
+});

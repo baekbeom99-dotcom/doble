@@ -1,7 +1,7 @@
 import { pointInRegion, type Rect } from './geometry';
 import { layoutSymbols } from './layout';
 import { createRng } from './rng';
-import { computeTable, floorBand, shadowColor, type TableGeom } from './seats';
+import { computeTable, floorBand, shadowColor, shrinkUntil, type TableGeom } from './seats';
 
 const VIEWPORTS: [number, number][] = [[1024, 768], [1280, 800], [1180, 820], [960, 600]];
 const COUNTS = [1, 2, 3, 4] as const;
@@ -86,5 +86,18 @@ describe('중앙 카드 바닥 띠', () => {
         exclusions: [floorBand(c)], count: 8, rng: createRng(seed),
       })).not.toThrow();
     }
+  });
+});
+
+describe('shrinkUntil', () => {
+  test('조건을 만족할 때까지 0.95배씩 줄인다', () => {
+    expect(shrinkUntil(100, v => v <= 90)).toBeCloseTo(85.7375);
+  });
+  test('조건을 끝내 만족하지 못해도 정해진 횟수 뒤에 멈춘다', () => {
+    expect(shrinkUntil(100, () => false)).toBeGreaterThan(0);
+  });
+  test('아주 작은 화면에서도 자리 계산이 끝난다', () => {
+    expect(computeTable(4, 4, 4).seats).toHaveLength(4);
+    expect(computeTable(2, 4, 4).seats).toHaveLength(2);
   });
 });

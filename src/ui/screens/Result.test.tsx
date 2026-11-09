@@ -41,3 +41,10 @@ test('서바이벌은 찾은 개수를 보여준다', () => {
   show({ ...s, mode: { ...s.mode, correct: 12 } });
   expect(screen.getByText('12개 찾았어요')).toBeInTheDocument();
 });
+test('이름이 같은 플레이어가 있어도 React 키 경고가 나지 않는다', () => {
+  const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+  const same = [{ name: '민수', color: 'pink' as const, cardSize: 5 }, { name: '민수', color: 'sky' as const, cardSize: 5 }];
+  show(withScores(createGame(testConfig({ players: same }), TEST_POOL, MODES), [1, 2]));
+  expect(spy).not.toHaveBeenCalled();
+  spy.mockRestore();
+});
