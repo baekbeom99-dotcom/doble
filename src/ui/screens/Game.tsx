@@ -46,6 +46,10 @@ export function Game({ config, symbols, onOver }: Props) {
   const [wrongFlash, setWrongFlash] = useState<Set<number>>(new Set());
   const onOverRef = useRef(onOver);
   onOverRef.current = onOver;
+  const freezeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 화면을 떠날 때 정답 강조 타이머를 정리한다
+  useEffect(() => () => { if (freezeTimer.current) clearTimeout(freezeTimer.current); }, []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -103,7 +107,8 @@ export function Game({ config, symbols, onOver }: Props) {
     const events = controller.dispatch({ type: 'TAP', player, symbol, round: round.index });
     if (events.some(e => e.type === 'round')) {
       setFreeze({ round: before.round, player, symbol });
-      setTimeout(() => setFreeze(null), FLASH_MS);
+      if (freezeTimer.current) clearTimeout(freezeTimer.current);
+      freezeTimer.current = setTimeout(() => { freezeTimer.current = null; setFreeze(null); }, FLASH_MS);
     }
   };
 

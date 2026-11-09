@@ -108,3 +108,14 @@ test('막판 3배가 켜져 있으면 마지막 라운드에 ×3을 보여준다
   render(<Game config={testConfig({ scoreRounds: 1, rules: { combo: false, finalRound: true, items: false } })} symbols={symbols} onOver={() => {}} />);
   expect(screen.getAllByText(/×3/)).toHaveLength(2);
 });
+test('게임 화면을 떠나면 남은 타이머를 모두 정리한다', () => {
+  vi.useFakeTimers();
+  try {
+    const { unmount } = render(<Game config={duoCfg} symbols={symbols} onOver={() => {}} />);
+    tapSeat(0, createGame(duoCfg, pool21, MODES).round.answers[0]);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
+  } finally {
+    vi.useRealTimers();
+  }
+});
