@@ -1,10 +1,10 @@
 import { createGame, reduce } from '../reducer';
-import type { GameConfig, GameState } from '../state';
+import { DEFAULT_BOMB, NO_RULES, type GameConfig, type GameState } from '../state';
 import { MODES } from './index';
 
 const pool = Array.from({ length: 21 }, (_, i) => `s${i}`);
 const base: Omit<GameConfig, 'mode' | 'players'> = {
-  set: { kind: 'consonant', includeDouble: false }, rotationStep: 90, symbolRotation: false, speech: false, scoreRounds: 20, seed: 1,
+  set: { kind: 'consonant', includeDouble: false }, rotationStep: 90, symbolRotation: false, speech: false, scoreRounds: 20, seed: 1, rules: NO_RULES, teams: null, bomb: DEFAULT_BOMB,
 };
 const soloCfg: GameConfig = { ...base, mode: 'soloSurvival', players: [{ name: 'A', color: 'pink', cardSize: 5 }] };
 const duoCfg: GameConfig = { ...base, mode: 'score', players: [{ name: 'A', color: 'pink', cardSize: 5 }, { name: 'B', color: 'sky', cardSize: 5 }] };

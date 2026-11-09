@@ -1,8 +1,19 @@
 import { generateRound } from './cardGen';
 import { createRng } from './rng';
-import { LOCK_MS, type Action, type GameConfig, type GameEvent, type GameState, type ModeTable, type RoundState } from './state';
+import {
+  LOCK_MS,
+  type Action,
+  type GameConfig,
+  type GameEvent,
+  type GameState,
+  type ModeTable,
+  type PlayerState,
+  type RoundState,
+} from './state';
 
-const ROUND_SEED_STEP = 7919;
+export const ROUND_SEED_STEP = 7919;
+
+type Step = { state: GameState; events: GameEvent[] };
 
 export function makeRound(config: GameConfig, pool: string[], index: number): RoundState {
   const r = generateRound({
@@ -13,51 +24,64 @@ export function makeRound(config: GameConfig, pool: string[], index: number): Ro
   return { index, center: r.center, cards: r.playerCards, answers: r.answers, rotation: (index * config.rotationStep) % 360 };
 }
 
+const BLANK_PLAYER: PlayerState = { score: 0, lockedUntil: 0, streak: 0, item: null, spinUntil: 0, hintRound: -1 };
+
 export function createGame(config: GameConfig, pool: string[], modes: ModeTable): GameState {
+  const mode = modes[config.mode];
   return {
     config,
     pool,
     now: 0,
     phase: 'playing',
-    players: config.players.map(() => ({ score: 0, lockedUntil: 0 })),
+    players: config.players.map((_, i) => ({ ...BLANK_PLAYER, ...mode.initPlayer?.(config, i) })),
     round: makeRound(config, pool, 0),
-    mode: modes[config.mode].init(config),
+    mode: mode.init(config),
   };
 }
 
-export function reduce(s: GameState, a: Action, modes: ModeTable): { state: GameState; events: GameEvent[] } {
-  if (s.phase !== 'playing') return { state: s, events: [] };
+function nextRound(s: GameState): Step {
+  const index = s.round.index + 1;
+  return { state: { ...s, round: makeRound(s.config, s.pool, index) }, events: [{ type: 'round', index }] };
+}
+
+function handleTap(s: GameState, a: Extract<Action, { type: 'TAP' }>, modes: ModeTable): Step | null {
   const mode = modes[s.config.mode];
-  const events: GameEvent[] = [];
-  let state = s;
+  const p = s.players[a.player];
+  const ignored = !p || a.round !== s.round.index || s.now < p.lockedUntil || !s.round.cards[a.player].includes(a.symbol);
+  if (ignored) return null;
 
-  if (a.type === 'TICK') {
-    state = mode.onTick({ ...s, now: s.now + a.dt }, a.dt);
-  } else {
-    const p = s.players[a.player];
-    const ignored =
-      !p || a.round !== s.round.index || s.now < p.lockedUntil || !s.round.cards[a.player].includes(a.symbol);
-    if (ignored) return { state: s, events: [] };
-
-    if (a.symbol === s.round.answers[a.player]) {
-      const res = mode.onCorrect(s, a.player);
-      state = res.state;
-      events.push({ type: 'correct', player: a.player, symbol: a.symbol });
-      if (res.nextRound) {
-        const index = state.round.index + 1;
-        state = { ...state, round: makeRound(state.config, state.pool, index) };
-        events.push({ type: 'round', index });
-      }
-    } else {
-      const players = s.players.map((pl, i) => (i === a.player ? { ...pl, lockedUntil: s.now + LOCK_MS } : pl));
-      state = mode.onWrong({ ...s, players }, a.player);
-      events.push({ type: 'wrong', player: a.player });
-    }
+  if (a.symbol !== s.round.answers[a.player]) {
+    const players = s.players.map((pl, i) => (i === a.player ? { ...pl, lockedUntil: s.now + LOCK_MS } : pl));
+    return { state: mode.onWrong({ ...s, players }, a.player), events: [{ type: 'wrong', player: a.player }] };
   }
 
-  if (mode.isOver(state)) {
-    state = { ...state, phase: 'over' };
-    events.push({ type: 'over' });
+  const value = 1;
+  const res = mode.onCorrect(s, a.player, value);
+  const events: GameEvent[] = [{ type: 'correct', player: a.player, symbol: a.symbol, value }, ...(res.events ?? [])];
+  let state = res.state;
+  if (res.nextRound) {
+    const next = nextRound(state);
+    state = next.state;
+    events.push(...next.events);
   }
   return { state, events };
+}
+
+function handleTick(s: GameState, dt: number, modes: ModeTable): Step {
+  const res = modes[s.config.mode].onTick({ ...s, now: s.now + dt }, dt);
+  return { state: res.state, events: res.events ?? [] };
+}
+
+export function reduce(s: GameState, a: Action, modes: ModeTable): Step {
+  if (s.phase !== 'playing') return { state: s, events: [] };
+
+  let step: Step | null = null;
+  if (a.type === 'TAP') step = handleTap(s, a, modes);
+  else if (a.type === 'TICK') step = handleTick(s, a.dt, modes);
+  if (!step) return { state: s, events: [] };
+
+  if (modes[s.config.mode].isOver(step.state)) {
+    step = { state: { ...step.state, phase: 'over' }, events: [...step.events, { type: 'over' }] };
+  }
+  return step;
 }

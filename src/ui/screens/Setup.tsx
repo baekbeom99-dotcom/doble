@@ -3,7 +3,7 @@ import { INITIALS } from '../../content/hangul';
 import { createSymbolSet, maxCardSize, MIN_CARD_SIZE, MAX_CARD_SIZE } from '../../content/registry';
 import type { SetConfig, SymbolDef } from '../../content/types';
 import { SEAT_COLORS, type SeatColor } from '../../engine/seats';
-import type { GameConfig, ModeId } from '../../engine/state';
+import { DEFAULT_BOMB, NO_RULES, type GameConfig, type ModeId } from '../../engine/state';
 
 const COLOR_NAMES: Record<SeatColor, string> = { pink: '핑크', sky: '하늘', yellow: '노랑', lime: '연두', purple: '보라' };
 const DEFAULT_COLORS: SeatColor[] = ['pink', 'sky', 'yellow', 'lime'];
@@ -72,7 +72,7 @@ export function Setup({ mode, onStart, onBack }: Props) {
       color: colors[i],
       cardSize: cardSizeNow,
     }));
-    onStart({ mode, players, set: setConfig, rotationStep, symbolRotation, speech, scoreRounds: rounds, seed: Date.now() }, syms);
+    onStart({ mode, players, set: setConfig, rotationStep, symbolRotation, speech, scoreRounds: rounds, seed: Date.now(), rules: NO_RULES, teams: null, bomb: DEFAULT_BOMB }, syms);
   };
 
   return (

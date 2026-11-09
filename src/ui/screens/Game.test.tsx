@@ -2,7 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { syllableSymbols } from '../../content/hangul';
 import { MODES } from '../../engine/modes';
 import { createGame } from '../../engine/reducer';
-import type { GameConfig } from '../../engine/state';
+import { DEFAULT_BOMB, NO_RULES, type GameConfig } from '../../engine/state';
 import { speak } from '../../services/speech';
 import { Game } from './Game';
 
@@ -12,7 +12,7 @@ const symbols = syllableSymbols('ㄱ', false);
 const pool21 = symbols.map(s => s.id);
 const duoCfg: GameConfig = {
   mode: 'score', players: [{ name: 'A', color: 'pink', cardSize: 5 }, { name: 'B', color: 'sky', cardSize: 5 }],
-  set: { kind: 'syllable', initial: 'ㄱ', batchim: false }, rotationStep: 90, symbolRotation: false, speech: true, scoreRounds: 20, seed: 3,
+  set: { kind: 'syllable', initial: 'ㄱ', batchim: false }, rotationStep: 90, symbolRotation: false, speech: true, scoreRounds: 20, seed: 3, rules: NO_RULES, teams: null, bomb: DEFAULT_BOMB,
 };
 
 beforeEach(() => { window.innerWidth = 1024; window.innerHeight = 768; });

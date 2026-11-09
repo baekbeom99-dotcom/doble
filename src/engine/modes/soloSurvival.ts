@@ -11,6 +11,6 @@ export const soloSurvival: Mode = {
     nextRound: true,
   }),
   onWrong: s => ({ ...s, mode: { ...s.mode, timeLeft: s.mode.timeLeft - PENALTY_MS } }),
-  onTick: (s, dt) => ({ ...s, mode: { ...s.mode, timeLeft: s.mode.timeLeft - dt } }),
+  onTick: (s, dt) => ({ state: { ...s, mode: { ...s.mode, timeLeft: s.mode.timeLeft - dt } } }),
   isOver: s => s.mode.timeLeft <= 0,
 };

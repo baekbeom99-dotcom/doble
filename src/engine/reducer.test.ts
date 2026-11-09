@@ -1,16 +1,18 @@
 import { createGame, reduce } from './reducer';
-import type { GameConfig, GameEvent, GameState, Mode } from './state';
+import { DEFAULT_BOMB, NO_RULES, type GameConfig, type GameEvent, type GameState, type Mode } from './state';
+import { MODES } from './modes';
+import { TEST_POOL, testConfig } from './testConfig';
 
 const fake: Mode = {
   init: () => ({ correct: 0 }),
   onCorrect: (s) => ({ state: { ...s, mode: { correct: s.mode.correct + 1 } }, nextRound: true }),
-  onWrong: s => s, onTick: s => s, isOver: s => s.mode.correct >= 3,
+  onWrong: s => s, onTick: s => ({ state: s }), isOver: s => s.mode.correct >= 3,
 };
 const modes = { soloSurvival: fake, score: fake };
 const pool = Array.from({ length: 21 }, (_, i) => `s${i}`);
 const cfg: GameConfig = {
   mode: 'score', players: [{ name: 'A', color: 'pink', cardSize: 4 }, { name: 'B', color: 'sky', cardSize: 6 }],
-  set: { kind: 'consonant', includeDouble: false }, rotationStep: 90, symbolRotation: false, speech: false, scoreRounds: 20, seed: 1,
+  set: { kind: 'consonant', includeDouble: false }, rotationStep: 90, symbolRotation: false, speech: false, scoreRounds: 20, seed: 1, rules: NO_RULES, teams: null, bomb: DEFAULT_BOMB,
 };
 const wrongOf = (s: GameState, p: number) => s.round.cards[p].find(id => id !== s.round.answers[p])!;
 
@@ -59,4 +61,19 @@ test('isOver가 true가 되면 over 이벤트가 나고 이후 터치는 무시�
 });
 test('같은 시드는 같은 라운드를 만든다', () => {
   expect(createGame(cfg, pool, modes).round).toEqual(createGame(cfg, pool, modes).round);
+});
+
+test('플레이어 초기 상태에 연속 기록·아이템·회전·힌트 필드가 있다', () => {
+  const s = createGame(testConfig(), TEST_POOL, MODES);
+  expect(s.players[0]).toEqual({ score: 0, lockedUntil: 0, streak: 0, item: null, spinUntil: 0, hintRound: -1 });
+});
+test('correct 이벤트에 값이 실린다', () => {
+  const g = createGame(testConfig(), TEST_POOL, MODES);
+  const { events } = reduce(g, { type: 'TAP', player: 0, symbol: g.round.answers[0], round: 0 }, MODES);
+  expect(events[0]).toEqual({ type: 'correct', player: 0, symbol: g.round.answers[0], value: 1 });
+});
+test('Mode.initPlayer가 있으면 플레이어 초기 상태에 반영한다', () => {
+  const custom = { ...MODES.score, initPlayer: () => ({ score: 7 }) };
+  const s = createGame(testConfig(), TEST_POOL, { ...MODES, score: custom });
+  expect(s.players.map(p => p.score)).toEqual([7, 7]);
 });

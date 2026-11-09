@@ -1,12 +1,12 @@
 import { GameController } from './controller';
 import { MODES } from './modes';
 import { createGame } from './reducer';
-import type { GameConfig } from './state';
+import { DEFAULT_BOMB, NO_RULES, type GameConfig } from './state';
 
 const pool = Array.from({ length: 21 }, (_, i) => `s${i}`);
 const soloCfg: GameConfig = {
   mode: 'soloSurvival', players: [{ name: 'A', color: 'pink', cardSize: 5 }],
-  set: { kind: 'consonant', includeDouble: false }, rotationStep: 90, symbolRotation: false, speech: false, scoreRounds: 20, seed: 1,
+  set: { kind: 'consonant', includeDouble: false }, rotationStep: 90, symbolRotation: false, speech: false, scoreRounds: 20, seed: 1, rules: NO_RULES, teams: null, bomb: DEFAULT_BOMB,
 };
 
 test('frame 사이의 dt를 100ms로 제한한다', () => {
