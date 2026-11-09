@@ -167,3 +167,5 @@ body {
 }
 .item-btn { font-size: 22px; padding: 0 6px; }
 .target-btn { font-size: 13px; padding: 0 6px; max-width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hud__final { background: var(--hit); border: 2px solid var(--ink); border-radius: 4px; padding: 0 4px; }
+.hud__teams { white-space: nowrap; }

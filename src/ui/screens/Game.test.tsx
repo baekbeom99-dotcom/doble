@@ -1,7 +1,8 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { syllableSymbols } from '../../content/hangul';
 import { MODES } from '../../engine/modes';
-import { createGame } from '../../engine/reducer';
+import { createGame, reduce } from '../../engine/reducer';
+import { testConfig } from '../../engine/testConfig';
 import { DEFAULT_BOMB, NO_RULES, type GameConfig } from '../../engine/state';
 import { speak } from '../../services/speech';
 import { Game } from './Game';
@@ -67,4 +68,43 @@ test('중앙 카드의 글자는 바닥 띠에서 8px 이상 떨어져 있다', 
   const glyphs = [...card.querySelectorAll<HTMLElement>('[data-symbol]')];
   expect(glyphs).toHaveLength(8);
   for (const g of glyphs) expect(parseFloat(g.style.top) + parseFloat(g.style.height)).toBeLessThanOrEqual(bandTop - 8);
+});
+
+const tapSeat = (seat: number, symbol: string) =>
+  fireEvent.pointerDown(screen.getByTestId(`seat-${seat}`).querySelector(`[data-symbol="${symbol}"]`)!);
+
+test('아이템을 얻어 얼리기를 쓰면 상대 자리가 잠긴다', () => {
+  const rules = { combo: false, finalRound: false, items: true };
+  let found: GameConfig | null = null;
+  for (let seed = 0; seed < 200 && !found; seed++) {
+    const cfg = testConfig({ seed, rules });
+    const g = createGame(cfg, pool21, MODES);
+    const r = reduce(g, { type: 'TAP', player: 0, symbol: g.round.answers[0], round: 0 }, MODES);
+    if (r.state.players[0].item === 'freeze') found = cfg;
+  }
+  expect(found).not.toBeNull();
+  render(<Game config={found!} symbols={symbols} onOver={() => {}} />);
+  tapSeat(0, createGame(found!, pool21, MODES).round.answers[0]);
+  fireEvent.pointerDown(screen.getByRole('button', { name: '얼리기' }));
+  expect(screen.getByTestId('seat-1').querySelector('.seat-region')).toHaveClass('is-locked');
+  expect(screen.queryByRole('button', { name: '얼리기' })).not.toBeInTheDocument();
+});
+test('폭탄 대상 고르기 버튼이 맞힌 사람 자리에 뜨고, 누르면 사라진다', () => {
+  const players = [...testConfig().players, { name: 'C', color: 'yellow' as const, cardSize: 5 }];
+  const cfg = testConfig({ mode: 'bomb', players, bomb: { startHand: 3, target: 'choose' } });
+  render(<Game config={cfg} symbols={symbols} onOver={() => {}} />);
+  tapSeat(0, createGame(cfg, pool21, MODES).round.answers[0]);
+  const pick = within(screen.getByTestId('seat-0')).getByRole('button', { name: 'C에게' });
+  fireEvent.pointerDown(pick);
+  expect(within(screen.getByTestId('seat-0')).queryByRole('button', { name: 'C에게' })).not.toBeInTheDocument();
+  expect(within(screen.getByTestId('badge-2')).getByText('4')).toBeInTheDocument();
+});
+test('팀전 정보 칸에 팀 합계를 보여준다', () => {
+  const players = ['pink', 'sky', 'yellow', 'lime'].map((c, i) => ({ name: `P${i}`, color: c as 'pink', cardSize: 5 }));
+  render(<Game config={testConfig({ players, teams: [0, 0, 1, 1] })} symbols={symbols} onOver={() => {}} />);
+  expect(screen.getAllByText('A 0 : 0 B')).toHaveLength(2);
+});
+test('막판 3배가 켜져 있으면 마지막 라운드에 ×3을 보여준다', () => {
+  render(<Game config={testConfig({ scoreRounds: 1, rules: { combo: false, finalRound: true, items: false } })} symbols={symbols} onOver={() => {}} />);
+  expect(screen.getAllByText(/×3/)).toHaveLength(2);
 });

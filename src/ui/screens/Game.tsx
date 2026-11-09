@@ -7,14 +7,15 @@ import { SURVIVAL_START_MS } from '../../engine/modes/soloSurvival';
 import { createGame } from '../../engine/reducer';
 import { createRng } from '../../engine/rng';
 import { computeTable, floorBand } from '../../engine/seats';
-import type { GameConfig, GameState, RoundState } from '../../engine/state';
+import { pendingChoice } from '../../engine/modes/bomb';
+import { ROUND_SEED_STEP, type GameConfig, type GameState, type RoundState } from '../../engine/state';
+import { opponentsOf, teamTotals } from '../../engine/teams';
 import { speak } from '../../services/speech';
 import { CenterCard } from '../components/CenterCard';
 import { Hud } from '../components/Hud';
-import { SeatView } from '../components/SeatView';
+import { extrasRect, SeatView } from '../components/SeatView';
 
 const FLASH_MS = 400;
-const ROUND_SEED_STEP = 7919;
 const SEAT_SEED_STEP = 101;
 const CENTER_SEAT = 99;
 
@@ -76,11 +77,15 @@ export function Game({ config, symbols, onOver }: Props) {
   const table = useMemo(() => computeTable(config.players.length as 1 | 2 | 3 | 4, W, H), [config.players.length, W, H]);
   const round = freeze?.round ?? state.round;
 
+  const { rules } = config;
+  // 콤보·아이템·대상 버튼이 뜰 수 있으면 그 칸에도 글자를 놓지 않는다
+  const needExtras = rules.combo || rules.items || (config.mode === 'bomb' && config.bomb.target === 'choose');
+
   const layouts = useMemo(() => {
     const seed = config.seed + round.index * ROUND_SEED_STEP;
     const seats = table.seats.map((seat, i): Placement[] =>
       layoutWithFallback({
-        region: seat.region, exclusions: [seat.badge], count: round.cards[i].length,
+        region: seat.region, exclusions: needExtras ? [seat.badge, extrasRect(seat)] : [seat.badge], count: round.cards[i].length,
         rotate: config.symbolRotation, rng: createRng(seed + i * SEAT_SEED_STEP),
       }));
     const c = table.center;
@@ -90,7 +95,7 @@ export function Game({ config, symbols, onOver }: Props) {
       rng: createRng(seed + CENTER_SEAT * SEAT_SEED_STEP),
     });
     return { seats, center };
-  }, [round, table, config.seed, config.symbolRotation]);
+  }, [round, table, config.seed, config.symbolRotation, needExtras]);
 
   const tap = (player: number, symbol: string) => {
     const before = controller.getState();
@@ -103,6 +108,9 @@ export function Game({ config, symbols, onOver }: Props) {
   };
 
   const solo = config.mode === 'soloSurvival';
+  const totals = teamTotals(state);
+  const lastRound = rules.finalRound && state.round.index === config.scoreRounds - 1;
+  const pending = pendingChoice(state);
   const hudContent = solo ? (
     <>
       <span>{Math.max(0, Math.ceil(state.mode.timeLeft / 1000))}초</span>
@@ -110,8 +118,11 @@ export function Game({ config, symbols, onOver }: Props) {
     </>
   ) : (
     <>
+      {totals && <span className="hud__teams">{`A ${totals[0]} : ${totals[1]} B`}</span>}
       <span>{Math.min(state.round.index + 1, config.scoreRounds)}/{config.scoreRounds}</span>
-      <span className="hud__bar"><i style={{ width: `${(state.round.index / config.scoreRounds) * 100}%` }} /></span>
+      {config.mode === 'bomb' && <span aria-hidden="true">💣</span>}
+      {lastRound && <span className="hud__final">×3</span>}
+      {!totals && <span className="hud__bar"><i style={{ width: `${(state.round.index / config.scoreRounds) * 100}%` }} /></span>}
     </>
   );
 
@@ -133,6 +144,17 @@ export function Game({ config, symbols, onOver }: Props) {
           flash={freeze?.player === i ? 'correct' : wrongFlash.has(i) ? 'wrong' : null}
           correctSymbol={freeze?.player === i ? freeze.symbol : null}
           onTap={symbol => tap(i, symbol)}
+          streak={rules.combo ? state.players[i].streak : 0}
+          item={rules.items ? state.players[i].item : null}
+          onUseItem={() => controller.dispatch({ type: 'USE_ITEM', player: i })}
+          team={config.teams?.[i] ?? null}
+          tower={config.mode === 'tower'}
+          hintSymbol={state.players[i].hintRound === round.index ? round.answers[i] : null}
+          spinning={state.now < state.players[i].spinUntil}
+          targets={pending?.from === i
+            ? opponentsOf(state, i).map(o => ({ index: o, name: config.players[o].name, color: config.players[o].color }))
+            : null}
+          onPickTarget={target => controller.dispatch({ type: 'CHOOSE_TARGET', player: i, target })}
         />
       ))}
       {table.hud.map((h, i) => <Hud key={i} rect={h.rect} facing={h.facing}>{hudContent}</Hud>)}
