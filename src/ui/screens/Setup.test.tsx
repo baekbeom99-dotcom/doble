@@ -2,6 +2,10 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type { PlayerConfig } from '../../engine/state';
 import { Setup } from './Setup';
 
+/** 글자 세트를 다 불러와 슬라이더 최대값이 정해질 때까지 기다린다 */
+const waitLoaded = () =>
+  waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).not.toHaveAttribute('max', '3'));
+
 test('자음 14개 세트에서는 카드당 심볼 수 최대값이 7이다', async () => {
   render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
   fireEvent.click(screen.getByRole('radio', { name: '자음' }));
@@ -26,17 +30,20 @@ test('혼자 하기는 1명으로 시작한다', async () => {
   await waitFor(() => expect(onStart).toHaveBeenCalled());
   expect(onStart.mock.calls[0][0].players).toHaveLength(1);
 });
-test('같은 자리 색은 두 명이 고를 수 없다', () => {
+test('같은 자리 색은 두 명이 고를 수 없다', async () => {
   render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
+  await waitLoaded();
   expect(within(screen.getByRole('group', { name: '플레이어 2 색' })).getByRole('radio', { name: '핑크' })).toBeDisabled();
 });
-test('인원을 4명으로 바꾸면 이름 칸이 4개가 된다', () => {
+test('인원을 4명으로 바꾸면 이름 칸이 4개가 된다', async () => {
   render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
+  await waitLoaded();
   fireEvent.click(within(screen.getByRole('group', { name: '인원' })).getByRole('radio', { name: '4명' }));
   expect(screen.getByLabelText('플레이어 4 이름')).toHaveValue('플레이어 4');
 });
-test('인원을 줄였다 늘려도 두 사람이 같은 색을 가질 수 없다', () => {
+test('인원을 줄였다 늘려도 두 사람이 같은 색을 가질 수 없다', async () => {
   render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
+  await waitLoaded();
   const people = within(screen.getByRole('group', { name: '인원' }));
   fireEvent.click(people.getByRole('radio', { name: '4명' }));
   fireEvent.click(people.getByRole('radio', { name: '2명' }));
