@@ -8,7 +8,7 @@ const fake: Mode = {
   onCorrect: (s) => ({ state: { ...s, mode: { correct: s.mode.correct + 1 } }, nextRound: true }),
   onWrong: s => s, onTick: s => ({ state: s }), isOver: s => s.mode.correct >= 3,
 };
-const modes: ModeTable = { soloSurvival: fake, score: fake, tower: fake };
+const modes: ModeTable = { soloSurvival: fake, score: fake, tower: fake, bomb: fake };
 const pool = Array.from({ length: 21 }, (_, i) => `s${i}`);
 const cfg: GameConfig = {
   mode: 'score', players: [{ name: 'A', color: 'pink', cardSize: 4 }, { name: 'B', color: 'sky', cardSize: 6 }],

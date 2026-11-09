@@ -2,6 +2,7 @@ import { generateRound } from './cardGen';
 import { updateStreaks } from './modifiers/combo';
 import { correctValue } from './modifiers/finalRound';
 import { maybeGrantItem, useItem } from './modifiers/items';
+import { chooseTarget } from './modes/bomb';
 import { createRng } from './rng';
 import {
   LOCK_MS,
@@ -92,6 +93,10 @@ export function reduce(s: GameState, a: Action, modes: ModeTable): Step {
   if (a.type === 'TAP') step = handleTap(s, a, modes);
   else if (a.type === 'TICK') step = handleTick(s, a.dt, modes);
   else if (a.type === 'USE_ITEM') step = handleUseItem(s, a.player);
+  else if (a.type === 'CHOOSE_TARGET') {
+    const r = chooseTarget(s, a.player, a.target);
+    step = r.events.length ? r : null;
+  }
   if (!step) return { state: s, events: [] };
 
   if (modes[s.config.mode].isOver(step.state)) {
