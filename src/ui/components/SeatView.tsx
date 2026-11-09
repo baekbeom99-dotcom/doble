@@ -108,9 +108,7 @@ export function SeatView(props: Props) {
               aria-label={`${t.name}에게`}
               style={{ background: SEAT_COLORS[t.color] }}
               onPointerDown={e => { e.preventDefault(); onPickTarget?.(t.index); }}
-            >
-              {t.name}
-            </button>
+            />
           ))}
         </div>
       )}

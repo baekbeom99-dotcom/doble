@@ -150,8 +150,8 @@ body {
 @keyframes spin { to { rotate: 360deg; } }
 
 .badge__team { font-size: .8em; background: #fff; border: 2px solid var(--ink); border-radius: 4px; padding: 1px 4px; }
-.tower { display: flex; flex-direction: column-reverse; gap: 2px; position: absolute; bottom: 100%; left: 50%; translate: -50% -4px; }
-.tower > i { display: block; width: 28px; height: 6px; background: var(--ink); border-radius: 2px; }
+.tower { display: flex; flex-direction: column-reverse; gap: 1px; height: 100%; justify-content: center; }
+.tower > i { display: block; width: 14px; height: 3px; background: var(--ink); border-radius: 1px; }
 
 .extras { position: absolute; display: flex; gap: 6px; align-items: center; justify-content: center; }
 .combo { background: var(--hit); border: 3px solid var(--ink); border-radius: 8px; padding: 2px 8px; font-size: 16px; white-space: nowrap; }
@@ -166,8 +166,12 @@ body {
   cursor: pointer;
 }
 .item-btn { font-size: 22px; padding: 0 6px; }
-.target-btn { font-size: 13px; padding: 0 6px; max-width: 34%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.target-btn { width: 44px; padding: 0; }
 .hud__final { background: var(--hit); border: 2px solid var(--ink); border-radius: 4px; padding: 0 4px; }
 .hud__teams { white-space: nowrap; }
 .team-tag { border: 3px solid var(--ink); border-radius: 8px; padding: 2px 8px; background: var(--hit); }
 .player .range input { width: 140px; }
+.rank__number { width: 32px; text-align: center; font-size: 28px; }
+.dots { display: flex; gap: 4px; }
+.rank__members { display: block; font-size: 14px; color: #5f5e5a; }
+.crown--bomb { background: #e24b4a; color: #fff; }
