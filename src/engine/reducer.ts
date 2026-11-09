@@ -1,4 +1,6 @@
 import { generateRound } from './cardGen';
+import { updateStreaks } from './modifiers/combo';
+import { correctValue } from './modifiers/finalRound';
 import { createRng } from './rng';
 import {
   LOCK_MS,
@@ -52,13 +54,13 @@ function handleTap(s: GameState, a: Extract<Action, { type: 'TAP' }>, modes: Mod
 
   if (a.symbol !== s.round.answers[a.player]) {
     const players = s.players.map((pl, i) => (i === a.player ? { ...pl, lockedUntil: s.now + LOCK_MS } : pl));
-    return { state: mode.onWrong({ ...s, players }, a.player), events: [{ type: 'wrong', player: a.player }] };
+    return { state: updateStreaks(mode.onWrong({ ...s, players }, a.player), a.player, false), events: [{ type: 'wrong', player: a.player }] };
   }
 
-  const value = 1;
+  const value = correctValue(s, a.player);
   const res = mode.onCorrect(s, a.player, value);
   const events: GameEvent[] = [{ type: 'correct', player: a.player, symbol: a.symbol, value }, ...(res.events ?? [])];
-  let state = res.state;
+  let state = updateStreaks(res.state, a.player, true);
   if (res.nextRound) {
     const next = nextRound(state);
     state = next.state;
