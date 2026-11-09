@@ -11,7 +11,8 @@ const ITEM_ICONS: Record<ItemId, string> = { freeze: '❄️', swirl: '🌀', hi
 const TEAM_LETTERS = ['A', 'B'];
 const MAX_TOWER = 10;
 const EXTRAS_GAP = 6;
-const EXTRAS_WIDTH_PER_HEIGHT = 3.2;
+/** 콤보 표시 + 아이템 버튼 + 대상 버튼 3개가 함께 들어가는 너비 (배지 높이 배수) */
+const EXTRAS_WIDTH_PER_HEIGHT = 6;
 
 export interface TargetOption { index: number; name: string; color: SeatColor }
 
@@ -90,7 +91,7 @@ export function SeatView(props: Props) {
         )}
       </div>
       {showExtras && (
-        <div className="extras" style={{ left: ex.x, top: ex.y, width: ex.w, height: ex.h, transform: rotate }}>
+        <div className="extras" style={{ left: ex.x, top: ex.y, width: ex.w, height: ex.h, transform: rotate, overflow: 'hidden' }}>
           {streak >= 2 && <span className="combo">콤보 {streak}</span>}
           {item && (
             <button

@@ -1,7 +1,9 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import type { SymbolDef } from '../../content/types';
 import type { Placement } from '../../engine/layout';
-import type { SeatGeom } from '../../engine/seats';
+import { computeTable, type SeatGeom } from '../../engine/seats';
+import { layoutSymbols } from '../../engine/layout';
+import { createRng } from '../../engine/rng';
 import { CenterCard } from './CenterCard';
 import { Glyph } from './Glyph';
 import { Hud } from './Hud';
@@ -109,4 +111,17 @@ test('extrasRect는 배지에서 영역 안쪽으로 떨어진 칸이고 화면 
   expect(r.x + r.w).toBeLessThanOrEqual(1024);
   const top = extrasRect({ ...geom, facing: 180, badge: { x: 380, y: 60, w: 110, h: 56 } });
   expect(top.y).toBeGreaterThanOrEqual(60 + 56);
+});
+test('extras 칸은 콤보·아이템·대상 버튼 3개가 함께 들어갈 만큼 넓고, 넘치는 내용은 잘린다', () => {
+  expect(extrasRect(geom).w).toBeGreaterThanOrEqual(geom.badge.h * 6);
+  render(<SeatView {...baseProps} streak={3} item="hint" targets={[{ index: 1, name: 'B', color: 'sky' }]} />);
+  expect(document.querySelector('.extras')).toHaveStyle({ overflow: 'hidden' });
+});
+test.each([[960, 600], [1024, 768]])('%ix%i 4인: 배지와 버튼 칸을 피해도 자리마다 글자 8개가 44px 이상으로 들어간다', (W, H) => {
+  const t = computeTable(4, W, H);
+  for (let seed = 0; seed < 20; seed++) {
+    for (const s of t.seats) {
+      expect(() => layoutSymbols({ region: s.region, exclusions: [s.badge, extrasRect(s)], count: 8, rng: createRng(seed) })).not.toThrow();
+    }
+  }
 });

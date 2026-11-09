@@ -70,3 +70,19 @@ test('팀전에서는 상대 팀에게만 넘긴다', () => {
     expect([2, 3]).toContain(give.to);
   }
 });
+test('대기 중인 넘기기로 누군가 0장이 되면 새 대기를 만들지 않고 끝난다', () => {
+  let s = createGame(bombCfg({ players: three, bomb: { startHand: 1, target: 'choose' } }), TEST_POOL, MODES);
+  s = tap(s, 0).state;
+  const r = tap(s, 1);
+  expect(r.state.players[0].score).toBe(0);
+  expect(pendingChoice(r.state)).toBeNull();
+  expect(r.state.phase).toBe('over');
+});
+test('마지막 라운드에서는 대기 없이 바로 넘기고 끝난다', () => {
+  let s = createGame(bombCfg({ scoreRounds: 2, bomb: { startHand: 5, target: 'choose' } }), TEST_POOL, MODES);
+  s = tap(s, 0).state;
+  const r = tap(s, 1);
+  expect(pendingChoice(r.state)).toBeNull();
+  expect(r.state.phase).toBe('over');
+  expect(r.state.players.map(p => p.score)).toEqual([5, 5]);
+});

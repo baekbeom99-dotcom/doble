@@ -47,9 +47,13 @@ export const bomb: Mode = {
     const first = resolveRandomly(s);
     let state = first.state;
     const events = [...first.events];
+    // 이전 넘기기로 누군가 0장이 되었으면 게임이 끝나므로 더 넘기지 않는다
+    if (state.players.some(p => p.score <= 0)) return { state, nextRound: true, events };
     const count = Math.min(value, state.players[player].score);
+    // 마지막 라운드에서는 기다리지 않고 바로 넘겨서 게임이 제때 끝나게 한다
+    const lastRound = state.round.index >= state.config.scoreRounds - 1;
     if (count > 0) {
-      if (state.config.bomb.target === 'random') {
+      if (state.config.bomb.target === 'random' || lastRound) {
         const r = give(state, player, randomTarget(state, player), count);
         state = r.state;
         events.push(...r.events);
