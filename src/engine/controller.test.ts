@@ -20,7 +20,7 @@ test('subscribe는 dispatch 결과 이벤트를 받는다', () => {
   const seen: string[] = []; c.subscribe((_, ev) => ev.forEach(e => seen.push(e.type)));
   const s = c.getState();
   c.dispatch({ type: 'TAP', player: 0, symbol: s.round.answers[0], round: 0 });
-  expect(seen).toEqual(['correct', 'round']);
+  expect(seen).toEqual(['correct', 'grade', 'round']);
 });
 test('구독을 해제하면 더 이상 알림을 받지 않는다', () => {
   const c = new GameController(createGame(soloCfg, pool, MODES), MODES);

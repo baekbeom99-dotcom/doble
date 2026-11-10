@@ -5,6 +5,13 @@ import { opponentsOf } from '../teams';
 
 export const ITEM_CHANCE = 0.2;
 export const ITEMS: readonly ItemId[] = ['freeze', 'swirl', 'hint', 'shield'];
+/** 혼자 하기(서바이벌·스테이지)에서 나오는 아이템 */
+export const SOLO_ITEMS: readonly ItemId[] = ['hint', 'timeStop', 'double'];
+export const TIME_STOP_MS = 3000;
+export const DOUBLE_MS = 10000;
+
+/** 혼자 하기 점수 규칙을 쓰는 모드인지 */
+export const isSoloScoring = (s: GameState) => s.config.mode.startsWith('solo');
 export const FREEZE_MS = 2000;
 export const SWIRL_MS = 3000;
 const ITEM_SEED = 500009;
@@ -21,7 +28,7 @@ export function maybeGrantItem(s: GameState, player: number): Step {
   if (!s.config.rules.items || s.players[player].item) return { state: s, events: [] };
   const rng = createRng(s.config.seed + s.round.index * ROUND_SEED_STEP + ITEM_SEED + player);
   if (rng.next() >= ITEM_CHANCE) return { state: s, events: [] };
-  const item = rng.pick(ITEMS);
+  const item = rng.pick(isSoloScoring(s) ? SOLO_ITEMS : ITEMS);
   return { state: setPlayer(s, player, { item }), events: [{ type: 'gotItem', player, item }] };
 }
 
@@ -48,6 +55,8 @@ export function useItem(s: GameState, player: number): Step {
   let step: Step;
   if (item === 'freeze') step = attack(s, player, p => ({ lockedUntil: Math.max(p.lockedUntil, s.now + FREEZE_MS) }));
   else if (item === 'swirl') step = attack(s, player, () => ({ spinUntil: s.now + SWIRL_MS }));
+  else if (item === 'timeStop') step = { state: { ...s, mode: { ...s.mode, timeStopUntil: s.now + TIME_STOP_MS } }, events: [] };
+  else if (item === 'double') step = { state: { ...s, mode: { ...s.mode, doubleUntil: s.now + DOUBLE_MS } }, events: [] };
   else step = { state: setPlayer(s, player, { hintRound: s.round.index }), events: [] };
 
   return {

@@ -2,7 +2,8 @@ import type { SetConfig, SymbolDef } from '../content/types';
 import type { SeatColor } from './seats';
 
 export type ModeId = 'soloSurvival' | 'score' | 'tower' | 'bomb' | 'coop';
-export type ItemId = 'freeze' | 'swirl' | 'hint' | 'shield';
+export type ItemId = 'freeze' | 'swirl' | 'hint' | 'shield' | 'timeStop' | 'double';
+export type Grade = 'perfect' | 'great' | 'good';
 
 export interface PlayerConfig { name: string; color: SeatColor; cardSize: number }
 
@@ -127,7 +128,9 @@ export type GameEvent =
   | { type: 'heartLost' }
   | { type: 'challengeStart'; kind: ChallengeKind }
   | { type: 'challengeEnd'; success: boolean }
-  | { type: 'missionDone'; reward: RewardId };
+  | { type: 'missionDone'; reward: RewardId }
+  | { type: 'grade'; grade: Grade; points: number }
+  | { type: 'fever' };
 
 export interface Mode {
   init(config: GameConfig): Record<string, number>;

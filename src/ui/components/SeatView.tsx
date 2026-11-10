@@ -7,8 +7,8 @@ import type { ItemId } from '../../engine/state';
 import { ELEMENTS } from '../../engine/coop/defense';
 import { Glyph } from './Glyph';
 
-export const ITEM_LABELS: Record<ItemId, string> = { freeze: '얼리기', swirl: '뒤섞기', hint: '힌트', shield: '방패' };
-const ITEM_ICONS: Record<ItemId, string> = { freeze: '❄️', swirl: '🌀', hint: '💡', shield: '🛡️' };
+export const ITEM_LABELS: Record<ItemId, string> = { freeze: '얼리기', swirl: '뒤섞기', hint: '힌트', shield: '방패', timeStop: '시간 정지', double: '2배' };
+const ITEM_ICONS: Record<ItemId, string> = { freeze: '❄️', swirl: '🌀', hint: '💡', shield: '🛡️', timeStop: '⏸️', double: '✨' };
 const TEAM_LETTERS = ['A', 'B'];
 const MAX_TOWER = 10;
 const EXTRAS_GAP = 6;
