@@ -2,15 +2,14 @@ import type { CSSProperties } from 'react';
 import type { SymbolDef } from '../../content/types';
 import type { Rect } from '../../engine/geometry';
 import type { Placement } from '../../engine/layout';
-import { SEAT_COLORS, shadowColor, type SeatColor, type SeatGeom } from '../../engine/seats';
+import { paperShades, SEAT_COLORS, type SeatColor, type SeatGeom } from '../../engine/seats';
 import type { ItemId } from '../../engine/state';
-import { ELEMENTS } from '../../engine/coop/defense';
 import { Glyph } from './Glyph';
+import { TURTLE_SHELL, TurtleBack } from './TurtleBack';
 
 export const ITEM_LABELS: Record<ItemId, string> = { freeze: '얼리기', swirl: '뒤섞기', hint: '힌트', shield: '방패', timeStop: '시간 정지', double: '2배' };
 const ITEM_ICONS: Record<ItemId, string> = { freeze: '❄️', swirl: '🌀', hint: '💡', shield: '🛡️', timeStop: '⏸️', double: '✨' };
 const TEAM_LETTERS = ['A', 'B'];
-const MAX_TOWER = 10;
 const EXTRAS_GAP = 6;
 /** 콤보 표시 + 아이템 버튼 + 대상 버튼 3개가 함께 들어가는 너비 (배지 높이 배수) */
 const EXTRAS_WIDTH_PER_HEIGHT = 6;
@@ -34,25 +33,32 @@ interface Props {
   item?: ItemId | null;
   onUseItem?: () => void;
   team?: number | null;
-  tower?: boolean;
   hintSymbol?: string | null;
   spinning?: boolean;
   targets?: TargetOption[] | null;
   onPickTarget?: (index: number) => void;
-  /** 이 자리가 맡은 원소 (협동) */
-  elements?: number[];
-  /** 원소 차례가 아니거나 이미 맞혀서 흐리게 표시 (협동) */
+  /** 이번 라운드에 이미 맞혀서 흐리게 표시 (협동) */
   dim?: boolean;
-  /** 배지의 점수 숫자를 숨긴다 (협동) */
+  /** 이름 뒤 점수를 숨긴다 (협동) */
   hideScore?: boolean;
+  /** 이름을 놓을 곡선 (SVG path d). 없으면 이름을 그리지 않는다 */
+  namePath?: string;
+  /** 악당 거북이의 불을 맞고 있다 (협동) */
+  burning?: boolean;
+  /** 거북이 뒷모습으로 그린다 (혼자 하기) */
+  turtle?: boolean;
 }
 
+/** 페이퍼컷: 같은 색 종이를 진하기만 다르게 세 겹 겹친다. 그림자는 아래로 부드럽게 */
 export function regionStyle(color: string): CSSProperties {
-  const c = shadowColor(color);
-  return { background: color, boxShadow: `0 0 0 6px rgba(${c},.35), 0 0 14px 6px rgba(${c},.25)` };
+  const [mid, dark] = paperShades(color);
+  return {
+    background: color,
+    boxShadow: `0 0 0 9px ${mid}, 0 0 0 18px ${dark}, 0 10px 22px 14px rgba(70,45,25,.28)`,
+  };
 }
 
-/** 콤보·아이템·대상 버튼이 놓이는 칸. 배지에서 영역 안쪽(플레이어 반대쪽)으로 떨어뜨린다 */
+/** 콤보·아이템·대상 버튼이 놓이는 칸. 배지 자리에서 영역 안쪽(플레이어 반대쪽)으로 떨어뜨린다 */
 export function extrasRect(geom: SeatGeom): Rect {
   const b = geom.badge;
   const clip = geom.region.clip;
@@ -64,19 +70,23 @@ export function extrasRect(geom: SeatGeom): Rect {
 
 export function SeatView(props: Props) {
   const { index, geom, color, symbols, placements, score, name, showName, locked, flash, correctSymbol, onTap } = props;
-  const { streak = 0, item = null, onUseItem, team = null, tower = false, hintSymbol = null, spinning = false, targets = null, onPickTarget } = props;
-  const { elements = [], dim = false, hideScore = false } = props;
+  const { streak = 0, item = null, onUseItem, team = null, hintSymbol = null, spinning = false, targets = null, onPickTarget } = props;
+  const { dim = false, hideScore = false, namePath, burning = false, turtle = false } = props;
   const { cx, cy, rx, ry } = geom.region.ellipse;
-  const hex = SEAT_COLORS[color];
-  const regionClass = ['seat-region', locked && 'is-locked', flash === 'wrong' && 'is-wrong', dim && 'is-dim'].filter(Boolean).join(' ');
-  const b = geom.badge;
+  // 혼자 하기 거북이는 초록 등껍질로 칠한다
+  const hex = turtle ? TURTLE_SHELL : SEAT_COLORS[color];
+  const regionClass = ['seat-region', locked && 'is-locked', flash === 'wrong' && 'is-wrong', dim && 'is-dim', burning && 'is-burning']
+    .filter(Boolean).join(' ');
   const ex = extrasRect(geom);
   const rotate = `rotate(${geom.facing}deg)`;
   const showExtras = streak >= 2 || item || (targets && targets.length > 0);
+  const box = { left: cx - rx, top: cy - ry, width: rx * 2, height: ry * 2 };
 
   return (
-    <div className={dim ? "seat seat--dim" : "seat"} data-testid={`seat-${index}`}>
-      <div className={regionClass} style={{ left: cx - rx, top: cy - ry, width: rx * 2, height: ry * 2, ...regionStyle(hex) }} />
+    <div className={dim ? 'seat seat--dim' : 'seat'} data-testid={`seat-${index}`}>
+      {turtle && <TurtleBack index={index} ellipse={geom.region.ellipse} layer="under" />}
+      <div className={regionClass} style={{ ...box, ...regionStyle(hex) }} />
+      {turtle && <TurtleBack index={index} ellipse={geom.region.ellipse} layer="over" />}
       {symbols.map((s, i) => (
         <Glyph
           key={s.id}
@@ -85,24 +95,22 @@ export function SeatView(props: Props) {
           facing={geom.facing}
           hit={flash === 'correct' && correctSymbol === s.id}
           className={[hintSymbol === s.id && 'glyph--hint', spinning && 'glyph--spin'].filter(Boolean).join(' ') || undefined}
-          onTap={locked ? undefined : onTap}
+          onTap={locked || burning ? undefined : onTap}
         />
       ))}
-      <div className="badge" data-testid={`badge-${index}`} style={{ left: b.x, top: b.y, width: b.w, height: b.h, background: hex, transform: rotate }}>
-        {team !== null && <span className="badge__team">{TEAM_LETTERS[team]}</span>}
-        {showName && <span className="badge__name">{name}</span>}
-        {elements.length > 0 && (
-          <span className="badge__elements">
-            {elements.map(e => <span key={e} title={ELEMENTS[e].name}>{ELEMENTS[e].icon}</span>)}
-          </span>
-        )}
-        {!hideScore && <b className="badge__score">{score}</b>}
-        {tower && (
-          <span className="tower" data-testid={`tower-${index}`}>
-            {Array.from({ length: Math.min(score, MAX_TOWER) }, (_, i) => <i key={i} />)}
-          </span>
-        )}
-      </div>
+      {showName && namePath && (
+        <svg className="seat-name">
+          <path id={`seat-name-${index}`} d={namePath} fill="none" />
+          <text>
+            <textPath href={`#seat-name-${index}`} startOffset="50%" textAnchor="middle">
+              {team !== null && <tspan className="seat-name__team">{TEAM_LETTERS[team]}</tspan>}
+              {team !== null && ' '}
+              {name}
+              {!hideScore && <tspan className="seat-name__score" data-testid={`score-${index}`} dx="10">{score}</tspan>}
+            </textPath>
+          </text>
+        </svg>
+      )}
       {showExtras && (
         <div className="extras" style={{ left: ex.x, top: ex.y, width: ex.w, height: ex.h, transform: rotate, overflow: 'hidden' }}>
           {streak >= 2 && <span className="combo">콤보 {streak}</span>}

@@ -7,7 +7,7 @@ test('minPoolSize와 maxCardSize', () => {
 });
 test('createSymbolSet은 설정에 맞는 세트를 불러온다', async () => {
   const set = createSymbolSet({ kind: 'syllable', initial: 'ㄴ', batchim: false });
-  expect(await set.loadSymbols()).toHaveLength(21);
+  expect(await set.loadSymbols()).toHaveLength(10);
   expect(set.name).toBe('ㄴ 글자');
 });
 test('세트 이름', () => {

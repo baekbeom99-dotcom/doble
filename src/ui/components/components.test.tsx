@@ -24,14 +24,14 @@ const pls: Placement[] = [{ x: 600, y: 650, size: 70, rotation: 0 }, { x: 750, y
 
 test('글자를 pointerdown하면 onTap에 id를 넘긴다', () => {
   const onTap = vi.fn();
-  render(<SeatView index={0} geom={geom} color="pink" symbols={syms} placements={pls} score={3} name="민지" showName
+  render(<SeatView index={0} geom={geom} color="pink" symbols={syms} placements={pls} score={3} name="민지" showName namePath="M0 0 A1 1 0 0 1 10 0"
     locked={false} flash={null} correctSymbol={null} onTap={onTap} />);
   fireEvent.pointerDown(document.querySelector('[data-symbol="ko-s:가"]')!);
   expect(onTap).toHaveBeenCalledWith('ko-s:가');
   expect(screen.getByText('민지')).toBeInTheDocument();
-  expect(screen.getByText('3')).toBeInTheDocument();
+  expect(screen.getByTestId('score-0')).toHaveTextContent('3');
   expect(screen.getByTestId('seat-0')).toBeInTheDocument();
-  expect(screen.getByTestId('badge-0')).toBeInTheDocument();
+  expect(screen.queryByTestId('badge-0')).not.toBeInTheDocument();
 });
 test('잠긴 상태에서는 onTap을 부르지 않는다', () => {
   const onTap = vi.fn();
@@ -95,14 +95,14 @@ test('힌트 글자와 회전 상태를 클래스로 표시한다', () => {
   expect(document.querySelector('[data-symbol="ko-s:고"]')).toHaveClass('glyph--hint');
   expect(document.querySelector('[data-symbol="ko-s:가"]')).toHaveClass('glyph--spin');
 });
-test('팀과 탑을 표시한다', () => {
-  render(<SeatView {...baseProps} score={4} team={1} tower />);
-  expect(within(screen.getByTestId('badge-0')).getByText('B')).toBeInTheDocument();
-  expect(screen.getByTestId('tower-0').children).toHaveLength(4);
+test('팀 글자와 점수를 이름 곡선에 붙인다', () => {
+  render(<SeatView {...baseProps} score={4} team={1} showName namePath="M0 0 A1 1 0 0 1 10 0" />);
+  expect(screen.getByText('B')).toBeInTheDocument();
+  expect(screen.getByTestId('score-0')).toHaveTextContent('4');
 });
-test('탑 그림은 10칸까지만 그린다', () => {
-  render(<SeatView {...baseProps} score={15} tower />);
-  expect(screen.getByTestId('tower-0').children).toHaveLength(10);
+test('혼자 하기 자리는 거북이 뒷모습으로 그린다', () => {
+  render(<SeatView {...baseProps} turtle />);
+  expect(screen.getByTestId('turtle-back-0')).toBeInTheDocument();
 });
 test('extrasRect는 배지에서 영역 안쪽으로 떨어진 칸이고 화면 안에 있다', () => {
   const r = extrasRect(geom);
@@ -124,4 +124,13 @@ test.each([[960, 600], [1024, 768]])('%ix%i 4인: 배지와 버튼 칸을 피해
       expect(() => layoutSymbols({ region: s.region, exclusions: [s.badge, extrasRect(s)], count: 8, rng: createRng(seed) })).not.toThrow();
     }
   }
+});
+
+test('이름은 영역 테두리를 따라 곡선(textPath)으로 그린다', () => {
+  render(<SeatView index={0} geom={geom} color="pink" symbols={syms} placements={pls} score={3} name="민지" showName namePath="M10 10 A100 100 0 0 1 200 10"
+    locked={false} flash={null} correctSymbol={null} onTap={() => {}} />);
+  const label = screen.getByText('민지');
+  expect(label.closest('textPath')).not.toBeNull();
+  const path = document.getElementById(label.closest('textPath')!.getAttribute('href')!.slice(1))!;
+  expect(path.getAttribute('d')).toBe('M10 10 A100 100 0 0 1 200 10');
 });

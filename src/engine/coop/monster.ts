@@ -1,4 +1,5 @@
 import type { CoopState, GameEvent, GameState, Mission } from '../state';
+import { attackDelay } from './fire';
 import { makeMission } from './missions';
 
 export const HEARTS_START = 3;
@@ -12,24 +13,22 @@ export function monsterHp(stage: number, players: number): number {
   return (8 + 4 * (stage - 1)) * players;
 }
 
-export function attackEvery(stage: number): number {
-  return Math.max(8000, Math.round(20000 * 0.9 ** (stage - 1)));
-}
-
 export function setCoop(s: GameState, patch: Partial<CoopState>): GameState {
   return { ...s, coop: { ...s.coop!, ...patch } };
 }
 
-/** 새 단계의 몬스터와 미션 */
-export function freshMonster(stage: number, players: number, mission: Mission): Partial<CoopState> {
+/** 새 단계의 몬스터와 미션. 불 공격 중에 쓰러뜨리면 불도 꺼진다 */
+export function freshMonster(stage: number, players: number, mission: Mission, seed: number, attackCount: number): Partial<CoopState> {
   const hp = monsterHp(stage, players);
+  const delay = attackDelay(seed, stage, attackCount);
   return {
     stage,
     hp,
     maxHp: hp,
-    attackLeft: attackEvery(stage),
+    attackLeft: delay,
+    attackTotal: delay,
     answered: Array.from({ length: players }, () => false),
-    challenge: null,
+    fire: null,
     mission,
   };
 }
@@ -42,5 +41,5 @@ export function applyDamage(s: GameState, amount: number, combo: boolean): Step 
   if (hp > 0) return { state: setCoop(s, { hp }), events };
   const stage = c.stage + 1;
   events.push({ type: 'monsterDown', stage: c.stage });
-  return { state: setCoop(s, freshMonster(stage, s.players.length, makeMission(s.config, c.symbols, stage))), events };
+  return { state: setCoop(s, freshMonster(stage, s.players.length, makeMission(s.config, c.symbols, stage), s.config.seed, c.attackCount)), events };
 }

@@ -11,8 +11,8 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: '도블 놀이',
-        short_name: '도블',
+        name: 'Turtle Dobble',
+        short_name: 'Turtle Dobble',
         lang: 'ko',
         display: 'fullscreen',
         orientation: 'landscape',

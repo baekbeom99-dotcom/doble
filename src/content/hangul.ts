@@ -8,6 +8,8 @@ const CONSONANT_NAMES = ['기역', '쌍기역', '니은', '디귿', '쌍디귿',
 
 /** 유니코드 중성 순서 (21개) */
 const VOWELS = ['ㅏ', 'ㅐ', 'ㅑ', 'ㅒ', 'ㅓ', 'ㅔ', 'ㅕ', 'ㅖ', 'ㅗ', 'ㅘ', 'ㅙ', 'ㅚ', 'ㅛ', 'ㅜ', 'ㅝ', 'ㅞ', 'ㅟ', 'ㅠ', 'ㅡ', 'ㅢ', 'ㅣ'];
+/** 아이 한글 학습의 기본 모음 10개. 이중모음(ㅐ ㅒ ㅔ ㅖ ㅘ ㅙ ㅚ ㅝ ㅞ ㅟ ㅢ)은 쓰지 않는다 */
+const BASIC_VOWELS = ['ㅏ', 'ㅑ', 'ㅓ', 'ㅕ', 'ㅗ', 'ㅛ', 'ㅜ', 'ㅠ', 'ㅡ', 'ㅣ'];
 /** 받침 있는 세트에 쓰는 모음과 대표 받침(종성 인덱스) */
 const BATCHIM_VOWELS = ['ㅏ', 'ㅓ', 'ㅗ', 'ㅜ', 'ㅡ', 'ㅣ'];
 const FINALS: [string, number][] = [['ㄱ', 1], ['ㄴ', 4], ['ㄷ', 7], ['ㄹ', 8], ['ㅁ', 16], ['ㅂ', 17], ['ㅇ', 21]];
@@ -40,6 +42,6 @@ function syllable(initial: string, vowel: string, final?: [string, number]): Sym
 
 export function syllableSymbols(initial: string, batchim: boolean): SymbolDef[] {
   if (!INITIALS.includes(initial as (typeof INITIALS)[number])) throw new Error(`초성이 아니에요: ${initial}`);
-  if (!batchim) return VOWELS.map(v => syllable(initial, v));
+  if (!batchim) return BASIC_VOWELS.map(v => syllable(initial, v));
   return BATCHIM_VOWELS.flatMap(v => FINALS.map(f => syllable(initial, v, f)));
 }

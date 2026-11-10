@@ -8,11 +8,9 @@ test('기본 자음 14개, 쌍자음 포함 19개', () => {
   expect(consonantSymbols(true)).toHaveLength(19);
   expect(consonantSymbols(false)[0]).toMatchObject({ id: 'ko-c:ㄱ', speech: '기역', lang: 'ko-KR' });
 });
-test('받침 없는 ㄱ 음절은 가부터 기까지 21개', () => {
+test('받침 없는 ㄱ 음절은 이중모음을 빼고 기본 모음 10개: 가 갸 거 겨 고 교 구 규 그 기', () => {
   const s = syllableSymbols('ㄱ', false);
-  expect(s).toHaveLength(21);
-  expect(s[0].display).toEqual({ kind: 'text', value: '가' });
-  expect(s[20].display).toEqual({ kind: 'text', value: '기' });
+  expect(s.map(x => x.display.kind === 'text' && x.display.value).join(' ')).toBe('가 갸 거 겨 고 교 구 규 그 기');
   expect(s.find(x => x.tags.vowel === 'ㅗ')!.display).toEqual({ kind: 'text', value: '고' });
 });
 test('받침 있는 ㄱ 음절은 42개이고 모두 받침이 있다', () => {

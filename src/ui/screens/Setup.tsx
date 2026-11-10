@@ -26,6 +26,13 @@ const CASE_LABELS = { upper: '대문자', lower: '소문자', mixed: '대소문�
 type SetKind = SetConfig['kind'];
 type LetterCase = keyof typeof CASE_LABELS;
 
+const NAME_MAX = 10;
+/** 이름 입력칸 너비(em): 한글 등 넓은 글자는 1em, 나머지는 0.6em으로 어림하고 여유를 더한다 */
+export function nameWidthEm(name: string): number {
+  const text = [...name].reduce((w, ch) => w + (/[ᄀ-ￜ]/.test(ch) ? 1 : 0.6), 0);
+  return Math.max(3, text) + 1.4;
+}
+
 /** 팀 번호: 4인 [0,0,1,1], 3인 [0,0,1] */
 export function teamsFor(count: number): number[] {
   return count === 4 ? [0, 0, 1, 1] : [0, 0, 1];
@@ -192,6 +199,8 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
           <input
             className="input"
             aria-label={`플레이어 ${i + 1} 이름`}
+            maxLength={NAME_MAX}
+            style={{ width: `${nameWidthEm(names[i])}em` }}
             value={names[i]}
             onChange={e => setNames(ns => ns.map((n, j) => (j === i ? e.target.value : n)))}
           />

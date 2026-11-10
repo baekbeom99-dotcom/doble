@@ -46,7 +46,6 @@ export interface PlayerState {
   hintRound: number;
 }
 
-export type ChallengeKind = 'elements' | 'quota';
 export type RewardId = 'heal' | 'bonus' | 'special';
 
 export interface Mission {
@@ -59,17 +58,13 @@ export interface Mission {
   done: boolean;
 }
 
-export interface Challenge {
-  kind: ChallengeKind;
-  timeLeft: number;
-  /** 원소 순서 (공동 목표면 빈 배열) */
-  sequence: number[];
-  /** 원소 순서에서 지금 차례 위치 */
-  step: number;
-  /** 공동 목표 수 (원소 순서면 sequence.length) */
+/** 악당 거북이의 불 공격 */
+export interface Fire {
+  /** 불을 맞은 사람 (그동안 누를 수 없다) */
   target: number;
-  /** 공동 목표 진행 수 */
-  count: number;
+  /** 다른 친구들이 맞힌 수 */
+  got: number;
+  timeLeft: number;
 }
 
 export interface CoopState {
@@ -77,13 +72,15 @@ export interface CoopState {
   hearts: number;
   hp: number;
   maxHp: number;
-  /** 몬스터 공격까지 남은 시간 */
+  /** 불 공격까지 남은 시간 */
   attackLeft: number;
-  /** 지금까지 시작한 방어 챌린지 수 (난수 시드용) */
+  /** 이번 공격 간격 전체 (타이머 막대 기준) */
+  attackTotal: number;
+  /** 지금까지 끝난 불 공격 수 (난수 시드용) */
   attackCount: number;
   /** 이번 라운드에 맞힌 사람 */
   answered: boolean[];
-  challenge: Challenge | null;
+  fire: Fire | null;
   mission: Mission;
   /** 미션을 새로 만들 때 쓰는 심볼 정보 */
   symbols: SymbolDef[];
@@ -128,8 +125,9 @@ export type GameEvent =
   | { type: 'damage'; amount: number; combo: boolean }
   | { type: 'monsterDown'; stage: number }
   | { type: 'heartLost' }
-  | { type: 'challengeStart'; kind: ChallengeKind }
-  | { type: 'challengeEnd'; success: boolean }
+  | { type: 'fireStart'; target: number }
+  | { type: 'fireRescue'; target: number }
+  | { type: 'fireBurn'; target: number }
   | { type: 'missionDone'; reward: RewardId }
   | { type: 'grade'; grade: Grade; points: number }
   | { type: 'fever' };

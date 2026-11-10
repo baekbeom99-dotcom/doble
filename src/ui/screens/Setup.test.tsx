@@ -65,6 +65,7 @@ const startWith = async (onStart: ReturnType<typeof vi.fn>) => {
 test('플레이어마다 심볼 수를 따로 정한다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
+  fireEvent.click(screen.getByRole('radio', { name: '알파벳' }));
   await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 2 심볼 수' })).toHaveAttribute('max', '8'));
   setRange(screen.getByRole('slider', { name: '플레이어 1 심볼 수' }), 3);
   setRange(screen.getByRole('slider', { name: '플레이어 2 심볼 수' }), 8);
@@ -104,6 +105,7 @@ test('팀 대결은 기본 4인 2:2이다', async () => {
 test('팀 대결 3인은 2:1이고 혼자인 사람의 심볼 수가 2 낮다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="team" onStart={onStart} onBack={() => {}} />);
+  fireEvent.click(screen.getByRole('radio', { name: '알파벳' }));
   await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '8'));
   fireEvent.click(within(screen.getByRole('group', { name: '인원' })).getByRole('radio', { name: '3명' }));
   const cfg = await startWith(onStart);
@@ -122,6 +124,7 @@ test('시작 버튼을 빠르게 두 번 눌러도 한 번만 시작한다', asy
 test('팀 대결을 3인에서 4인으로 되돌리면 3번 플레이어의 심볼 수도 돌아온다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="team" onStart={onStart} onBack={() => {}} />);
+  fireEvent.click(screen.getByRole('radio', { name: '알파벳' }));
   await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '8'));
   const people = within(screen.getByRole('group', { name: '인원' }));
   fireEvent.click(people.getByRole('radio', { name: '3명' }));
@@ -132,6 +135,7 @@ test('팀 대결을 3인에서 4인으로 되돌리면 3번 플레이어의 심�
 test('3인 팀 보정은 화면에 보이는(제한된) 심볼 수를 기준으로 한다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="team" onStart={onStart} onBack={() => {}} />);
+  fireEvent.click(screen.getByRole('radio', { name: '알파벳' }));
   await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '8'));
   setRange(screen.getByRole('slider', { name: '플레이어 1 심볼 수' }), 8);
   fireEvent.click(screen.getByRole('radio', { name: '자음' }));
@@ -181,6 +185,10 @@ test('혼자 하기: 몬스터 사냥은 1인 협동', async () => {
   expect(cfg.players).toHaveLength(1);
 });
 
+test('기본 글자 세트(받침 없음)는 이중모음을 빼서 카드당 최대 5개다', async () => {
+  render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '5'));
+});
 test('글자 세트의 초성은 콤보박스 대신 토글 버튼으로 고른다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
@@ -211,4 +219,15 @@ test('같이 하기는 중앙 카드를 90°씩 돌리는 것이 기본이다', 
   render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
   await startWith(onStart);
   expect(onStart.mock.calls[0][0].rotationStep).toBe(90);
+});
+test('이름 입력칸 길이는 이름 길이에 맞춰 늘고 준다', () => {
+  render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
+  const input = screen.getByLabelText('플레이어 1 이름') as HTMLInputElement;
+  const width = () => parseFloat(input.style.width);
+  fireEvent.change(input, { target: { value: '민' } });
+  const short = width();
+  fireEvent.change(input, { target: { value: '민지네 큰언니' } });
+  expect(width()).toBeGreaterThan(short);
+  fireEvent.change(input, { target: { value: 'Al' } });
+  expect(width()).toBeLessThan(short + 0.01 + 1);
 });
