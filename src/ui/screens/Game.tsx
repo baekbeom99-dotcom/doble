@@ -10,20 +10,28 @@ import { createGame } from '../../engine/reducer';
 import { createRng } from '../../engine/rng';
 import { computeTable, floorBand } from '../../engine/seats';
 import { pendingChoice } from '../../engine/modes/bomb';
-import { ROUND_SEED_STEP, type GameConfig, type GameState, type RoundState } from '../../engine/state';
+import { ROUND_SEED_STEP, type GameConfig, type GameState, type Grade, type RoundState } from '../../engine/state';
 import { opponentsOf, teamTotals } from '../../engine/teams';
 import { speak } from '../../services/speech';
 import { CenterCard } from '../components/CenterCard';
 import { CoopPanel, type CoopBanner } from '../components/CoopPanel';
+import { SoloHud } from '../components/SoloHud';
 import { Hud } from '../components/Hud';
 import { extrasRect, SeatView } from '../components/SeatView';
 
 const FLASH_MS = 400;
 const BANNER_MS = 1200;
+const GRADE_MS = 800;
 const SEAT_SEED_STEP = 101;
 const CENTER_SEAT = 99;
 
-interface Props { config: GameConfig; symbols: SymbolDef[]; onOver: (s: GameState) => void }
+interface Props {
+  config: GameConfig;
+  symbols: SymbolDef[];
+  onOver: (s: GameState) => void;
+  /** 서바이벌 최고 점수 (고스트) */
+  best?: number | null;
+}
 
 /** 정답 직후 잠깐 이전 라운드를 보여주며 정답 글자를 강조한다 */
 interface Freeze { round: RoundState; player: number; symbol: string }
@@ -38,7 +46,7 @@ function useViewport() {
   return size;
 }
 
-export function Game({ config, symbols, onOver }: Props) {
+export function Game({ config, symbols, onOver, best = null }: Props) {
   const byId = useMemo(() => new Map(symbols.map(s => [s.id, s])), [symbols]);
   const controllerRef = useRef<GameController | null>(null);
   if (!controllerRef.current) {
@@ -49,6 +57,7 @@ export function Game({ config, symbols, onOver }: Props) {
   const [freeze, setFreeze] = useState<Freeze | null>(null);
   const [wrongFlash, setWrongFlash] = useState<Set<number>>(new Set());
   const [banner, setBanner] = useState<CoopBanner | null>(null);
+  const [lastGrade, setLastGrade] = useState<Grade | null>(null);
   const onOverRef = useRef(onOver);
   onOverRef.current = onOver;
   const freezeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -76,6 +85,12 @@ export function Game({ config, symbols, onOver }: Props) {
           timers.push(setTimeout(() => setWrongFlash(prev => { const n = new Set(prev); n.delete(e.player); return n; }), FLASH_MS));
         }
         // 협동 배너: 공격 경고와 방어 결과를 잠깐 띄운다
+        // 혼자 하기 판정을 잠깐 보여준다
+        if (e.type === 'grade') {
+          const g = e.grade;
+          setLastGrade(g);
+          timers.push(setTimeout(() => setLastGrade(cur => (cur === g ? null : cur)), GRADE_MS));
+        }
         if (e.type === 'challengeStart' || e.type === 'challengeEnd') {
           const text: CoopBanner = e.type === 'challengeStart' ? '공격 준비!' : e.success ? '막았다!' : '아야!';
           setBanner(text);
@@ -97,9 +112,10 @@ export function Game({ config, symbols, onOver }: Props) {
 
   const { W, H } = useViewport();
   const isCoop = config.mode === 'coop';
+  const isSolo = config.mode === 'soloSurvival' || config.mode === 'soloStage';
   const table = useMemo(
-    () => computeTable(config.players.length as 1 | 2 | 3 | 4, W, H, { tallHud: isCoop }),
-    [config.players.length, W, H, isCoop],
+    () => computeTable(config.players.length as 1 | 2 | 3 | 4, W, H, { tallHud: isCoop || isSolo }),
+    [config.players.length, W, H, isCoop, isSolo],
   );
   const round = freeze?.round ?? state.round;
 
@@ -173,7 +189,7 @@ export function Game({ config, symbols, onOver }: Props) {
   );
 
   return (
-    <div className="table">
+    <div className={isSolo && state.now < (state.mode.feverUntil ?? 0) ? "table is-fever" : "table"}>
       <CenterCard circle={table.center} symbols={round.center.map(id => byId.get(id)!)} placements={layouts.center} rotation={round.rotation} />
       {table.seats.map((seat, i) => (
         <SeatView
@@ -208,7 +224,13 @@ export function Game({ config, symbols, onOver }: Props) {
       ))}
       {table.hud.map((h, i) => (
         <Hud key={i} rect={h.rect} facing={h.facing} tall={isCoop}>
-          {coop ? <CoopPanel coop={coop} attackEvery={attackEvery(coop.stage)} banner={banner} /> : hudContent}
+          {coop ? (
+            <CoopPanel coop={coop} attackEvery={attackEvery(coop.stage)} banner={banner} />
+          ) : isSolo ? (
+            <SoloHud mode={state.mode} kind={config.mode as 'soloSurvival' | 'soloStage'} now={state.now} best={best} lastGrade={lastGrade} />
+          ) : (
+            hudContent
+          )}
         </Hud>
       ))}
     </div>

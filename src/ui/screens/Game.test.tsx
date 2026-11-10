@@ -179,3 +179,30 @@ test('협동: 라운드가 안 바뀌는 정답에도 노란 정답 강조가 �
   tapSeat(0, ans);
   expect(screen.getByTestId('seat-0').querySelector(`[data-symbol="${ans}"]`)).toHaveClass('glyph--hit');
 });
+
+test('서바이벌: 맞히면 판정과 점수가 정보 칸에 나온다', () => {
+  const cfg = testConfig({ mode: 'soloSurvival', players: [testConfig().players[0]] });
+  render(<Game config={cfg} symbols={symbols} onOver={() => {}} best={20} />);
+  expect(screen.getByText('최고 20점')).toBeInTheDocument();
+  tapSeat(0, createGame(cfg, pool21, MODES).round.answers[0]);
+  expect(screen.getByText('Perfect')).toBeInTheDocument();
+  expect(screen.getByText('3점')).toBeInTheDocument();
+});
+test('서바이벌: 5연속이면 피버 효과가 켜진다', () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance', 'Date'] });
+  try {
+    const cfg = testConfig({ mode: 'soloSurvival', players: [testConfig().players[0]] });
+    render(<Game config={cfg} symbols={symbols} onOver={() => {}} />);
+    let g = createGame(cfg, pool21, MODES);
+    for (let i = 0; i < 5; i++) {
+      tapSeat(0, g.round.answers[0]);
+      g = reduce(g, { type: 'TAP', player: 0, symbol: g.round.answers[0], round: g.round.index }, MODES).state;
+      act(() => { vi.advanceTimersByTime(450); });
+    }
+    expect(document.querySelector('.table')).toHaveClass('is-fever');
+  } finally { vi.useRealTimers(); }
+});
+test('스테이지 도전: 진행 수를 보여준다', () => {
+  render(<Game config={testConfig({ mode: 'soloStage', stage: 1, players: [testConfig().players[0]] })} symbols={symbols} onOver={() => {}} />);
+  expect(screen.getByText('0/7')).toBeInTheDocument();
+});
