@@ -120,9 +120,15 @@ describe.each(VIEWPORTS)('tallHud %ix%i', (W, H) => {
   });
 });
 
-test.each(VIEWPORTS)('%ix%i 1인 중앙 카드는 0.26×min(W,H)이고 자리와 간격을 유지한다', (W, H) => {
+test.each(VIEWPORTS)('%ix%i 1인은 중앙 카드를 위, 자리를 아래 가운데에 치우치지 않게 놓는다', (W, H) => {
   const t = computeTable(1, W, H, { tallHud: true });
-  expect(t.center.rx).toBeCloseTo(0.26 * Math.min(W, H));
+  const e = t.seats[0].region.ellipse;
+  expect(e.cx).toBeCloseTo(W / 2);
+  expect(e.cy).toBeCloseTo(H);
+  expect(t.center.cx).toBeCloseTo(W / 2);
+  expect(t.center.cy).toBeLessThan(H / 2);
+  expect(t.center.rx).toBeGreaterThan(0.22 * Math.min(W, H));
+  expect(t.center.rx).toBeLessThanOrEqual(0.26 * Math.min(W, H) + 1e-9);
   for (const [x, y] of gridPoints({ x: 0, y: 0, w: W, h: H })) {
     if (pointInRegion(x, y, t.seats[0].region)) expect(Math.hypot(x - t.center.cx, y - t.center.cy)).toBeGreaterThanOrEqual(t.center.rx * 1.2);
   }
@@ -132,4 +138,18 @@ test.each(VIEWPORTS)('%ix%i 1인 중앙 카드는 0.26×min(W,H)이고 자리와
 });
 test('2인 중앙 카드는 그대로 0.22×min(W,H)이다', () => {
   expect(computeTable(2, 1024, 768).center.rx).toBeCloseTo(0.22 * 768);
+});
+
+describe.each(VIEWPORTS)('나가기 버튼 %ix%i', (W, H) => {
+  test.each([[1, false], [1, true], [2, false], [2, true], [3, false], [3, true], [4, false], [4, true]] as const)(
+    '%i인 (tallHud %s): 화면 안에서 자리·배지·정보 칸·중앙 카드와 겹치지 않는다', (n, tallHud) => {
+      const t = computeTable(n, W, H, { tallHud });
+      const r = t.exit;
+      expect(r.w).toBeGreaterThanOrEqual(44);
+      expect(r.h).toBeGreaterThanOrEqual(44);
+      expect(inside(W, H, r)).toBe(true);
+      expect(rectCircleDist(r, t)).toBeGreaterThan(t.center.rx);
+      for (const [x, y] of gridPoints(r, 4)) expect(t.seats.some(s => pointInRegion(x, y, s.region))).toBe(false);
+      for (const o of [...t.seats.map(s => s.badge), ...t.hud.map(h => h.rect)]) expect(overlap(r, o)).toBe(false);
+    });
 });

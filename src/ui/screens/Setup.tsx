@@ -53,10 +53,12 @@ function Radio(props: { name: string; label: string; checked: boolean; onChange:
   );
 }
 
+/** 켜고 끄는 스위치 */
 function Check(props: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
   return (
-    <label className="check">
-      <input type="checkbox" checked={props.checked} onChange={e => props.onChange(e.target.checked)} />
+    <label className={props.checked ? 'switch switch--on' : 'switch'}>
+      <input type="checkbox" role="switch" checked={props.checked} onChange={e => props.onChange(e.target.checked)} />
+      <span className="switch__track" aria-hidden="true"><i /></span>
       {props.label}
     </label>
   );
@@ -83,7 +85,8 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
   const [rules, setRules] = useState<Rules>(ALL_RULES);
   const [bomb, setBomb] = useState<BombConfig>({ startHand: 5, target: 'random' });
   const [rounds, setRounds] = useState(20);
-  const [rotationStep, setRotationStep] = useState<90 | 180>(90);
+  // 혼자 하기는 마주 앉은 사람이 없으니 기본으로 돌리지 않는다
+  const [rotationStep, setRotationStep] = useState<0 | 90 | 180>(solo ? 0 : 90);
   const [symbolRotation, setSymbolRotation] = useState(false);
   const [speech, setSpeech] = useState(true);
   const [symbols, setSymbols] = useState<SymbolDef[] | null>(null);
@@ -233,9 +236,9 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
           {setKind === 'consonant' && <Check label="쌍자음 포함" checked={includeDouble} onChange={setIncludeDouble} />}
           {setKind === 'syllable' && (
             <>
-              <select className="input" aria-label="초성" value={initial} onChange={e => setInitial(e.target.value)}>
-                {INITIALS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
+              <fieldset className="toggles" aria-label="초성">
+                {INITIALS.map(c => <Radio key={c} name="initial" label={c} checked={initial === c} onChange={() => setInitial(c)} />)}
+              </fieldset>
               <Check label="받침 있는 글자" checked={batchim} onChange={setBatchim} />
             </>
           )}
@@ -287,6 +290,7 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
 
       <fieldset className="field" aria-label="중앙 회전">
         <legend>중앙 카드 회전</legend>
+        <Radio name="rot" label="안 돌림" checked={rotationStep === 0} onChange={() => setRotationStep(0)} />
         <Radio name="rot" label="90°" checked={rotationStep === 90} onChange={() => setRotationStep(90)} />
         <Radio name="rot" label="180°" checked={rotationStep === 180} onChange={() => setRotationStep(180)} />
       </fieldset>

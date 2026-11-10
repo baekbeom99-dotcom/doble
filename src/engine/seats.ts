@@ -23,6 +23,8 @@ export interface TableGeom {
   center: Ellipse;
   seats: SeatGeom[];
   hud: { rect: Rect; facing: 0 | 180 }[];
+  /** 게임 중 나가기 버튼 자리 */
+  exit: Rect;
 }
 
 const CENTER_RATIO = 0.22;
@@ -82,12 +84,49 @@ export function computeTable(playerCount: 1 | 2 | 3 | 4, W: number, H: number, o
   const box: HudBox = opts.tallHud ? { w: 0.2 * W, h: 0.2 * H } : { w: 0.16 * W, h: hudH };
   const screen: Rect = { x: 0, y: 0, w: W, h: H };
   const minGap = MIN_GAP_RATIO * R0;
-  return playerCount === 1 || playerCount === 2
-    ? halfCircleTable(playerCount, W, H, center, hudH, box, screen, minGap)
-    : cornerTable(playerCount, W, H, center, hudH, box, screen, minGap);
+  const table = playerCount === 1
+    ? soloTable(W, H, hudH, box, screen)
+    : playerCount === 2
+      ? halfCircleTable(2, W, H, center, hudH, box, screen, minGap)
+      : cornerTable(playerCount, W, H, center, hudH, box, screen, minGap);
+  return { ...table, exit: exitRect(playerCount, W, H) };
 }
 
-function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number): TableGeom {
+export const EXIT_W = 88;
+export const EXIT_H = 44;
+
+/** 나가기 버튼: 1인 오른쪽 위, 2인 왼쪽 가운데, 3~4인 위쪽 가운데 (자리 영역이 닿지 않는 곳) */
+function exitRect(n: number, W: number, H: number): Rect {
+  const m = 0.02 * Math.min(W, H);
+  if (n === 1) return { x: W - m - EXIT_W, y: m, w: EXIT_W, h: EXIT_H };
+  if (n === 2) return { x: m, y: H / 2 - EXIT_H / 2, w: EXIT_W, h: EXIT_H };
+  return { x: W / 2 - EXIT_W / 2, y: m, w: EXIT_W, h: EXIT_H };
+}
+
+const SOLO_MARGIN = 0.03;
+const SOLO_RX = 0.42;
+const SOLO_RY = 0.46;
+
+/** 1인: 중앙 카드를 위 가운데, 자리 반타원을 아래 가운데에 놓아 한쪽으로 치우치지 않게 한다 */
+function soloTable(W: number, H: number, hudH: number, box: HudBox, screen: Rect): Omit<TableGeom, 'exit'> {
+  const rx = SOLO_RX * W, ry = SOLO_RY * H;
+  const margin = SOLO_MARGIN * H;
+  // 카드 지름 + 간격(0.2R) + 자리 높이가 화면 높이에 들어가게 한다
+  const R0 = Math.min(SOLO_CENTER_RATIO * Math.min(W, H), (H - ry - margin) / (2 + MIN_GAP_RATIO));
+  const center: Ellipse = { cx: W / 2, cy: margin + R0, rx: R0, ry: R0 };
+  const ellipse: Ellipse = { cx: W / 2, cy: H, rx, ry };
+  const cos = Math.cos((20 * Math.PI) / 180), sin = Math.sin((20 * Math.PI) / 180);
+  const seat: SeatGeom = {
+    index: 0,
+    region: { ellipse, clip: screen },
+    facing: 0,
+    badge: centeredRect(ellipse.cx - rx * cos, ellipse.cy - ry * sin, 0.11 * W, hudH),
+  };
+  const hud = [{ rect: { x: 0.02 * W, y: 0.02 * H, w: box.w, h: box.h }, facing: 0 as const }];
+  return { center, seats: [seat], hud };
+}
+
+function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number): Omit<TableGeom, 'exit'> {
   const hudRects: Rect[] = [{ x: 0.02 * W, y: H - 0.02 * H - box.h, w: box.w, h: box.h }];
   if (n === 2) hudRects.push({ x: W - 0.02 * W - box.w, y: 0.02 * H, w: box.w, h: box.h });
   const gapOf = (r: number) => Math.hypot(W - 0.94 * r - center.cx, H - center.cy) - r - center.rx;
@@ -105,7 +144,7 @@ function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: 
     facing: 0,
     badge: centeredRect(bottom.cx - r * cos, bottom.cy - r * sin, bw, hudH),
   }];
-  const hud: TableGeom['hud'] = [{ rect: hudRects[0], facing: 0 }];
+  const hud: Omit<TableGeom, 'exit'>['hud'] = [{ rect: hudRects[0], facing: 0 }];
 
   if (n === 2) {
     const top = { cx: 0.94 * r, cy: 0 };
@@ -128,7 +167,7 @@ const CORNERS = [
   { left: true, bottom: false },
 ];
 
-function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number): TableGeom {
+function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number): Omit<TableGeom, 'exit'> {
   const y = H / 2 - box.h / 2;
   const hudRects: Rect[] = [{ x: 0.02 * W, y, w: box.w, h: box.h }, { x: W - 0.02 * W - box.w, y, w: box.w, h: box.h }];
   // 가로·세로 반지름을 같은 비율(scale)로 줄인다. 대칭이라 왼쪽 위 타원으로 검사한다
@@ -154,7 +193,7 @@ function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: numb
       badge: centeredRect(left ? cx + rx : cx - rx, cy, bw, hudH),
     };
   });
-  const hud: TableGeom['hud'] = [
+  const hud: Omit<TableGeom, 'exit'>['hud'] = [
     { rect: hudRects[0], facing: 0 },
     { rect: hudRects[1], facing: 180 },
   ];

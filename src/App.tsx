@@ -77,6 +77,7 @@ function Screens() {
           config={config}
           symbols={symbols}
           best={best}
+          onExit={() => setScreen({ name: 'home' })}
           onOver={state => setScreen({ name: 'result', config, symbols, state, outcome: recordGame(state, setId, setName) })}
         />
       );

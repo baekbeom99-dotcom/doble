@@ -212,3 +212,43 @@ test('스테이지 도전: 자리 배지에 맞힌 수가 나온다', () => {
   tapSeat(0, createGame(cfg, pool21, MODES).round.answers[0]);
   expect(within(screen.getByTestId('badge-0')).getByText('1')).toBeInTheDocument();
 });
+
+test('나가기를 누르면 확인 창이 뜨고, 그만하기를 누르면 onExit을 부른다', () => {
+  const onExit = vi.fn();
+  render(<Game config={duoCfg} symbols={symbols} onOver={() => {}} onExit={onExit} />);
+  fireEvent.click(screen.getByRole('button', { name: '나가기' }));
+  expect(screen.getByRole('dialog', { name: '게임을 그만할까요?' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '계속하기' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(onExit).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: '나가기' }));
+  fireEvent.click(screen.getByRole('button', { name: '그만하기' }));
+  expect(onExit).toHaveBeenCalled();
+});
+test('나가기 확인 창이 떠 있는 동안 게임 시간이 흐르지 않는다', () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance', 'Date'] });
+  try {
+    render(<Game config={{ ...duoCfg, mode: 'soloSurvival', players: [duoCfg.players[0]] }} symbols={symbols} onOver={() => {}} onExit={() => {}} />);
+    fireEvent.click(screen.getByRole('button', { name: '나가기' }));
+    act(() => { vi.advanceTimersByTime(5000); });
+    expect(screen.getByText('30초')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: '계속하기' }));
+    act(() => { vi.advanceTimersByTime(2100); });
+    expect(screen.queryByText('30초')).not.toBeInTheDocument();
+  } finally { vi.useRealTimers(); }
+});
+test('정답을 맞히면 화면 가장자리가 맞힌 사람 색으로 반짝인다', () => {
+  render(<Game config={duoCfg} symbols={symbols} onOver={() => {}} />);
+  expect(screen.queryByTestId('edge-flash')).not.toBeInTheDocument();
+  tapSeat(1, createGame(duoCfg, pool21, MODES).round.answers[1]);
+  expect(screen.getByTestId('edge-flash')).toHaveAttribute('data-player', '1');
+});
+test('협동: 몬스터가 배경에 크게 그려진다', () => {
+  render(<Game config={testConfig({ mode: 'coop' })} symbols={symbols} onOver={() => {}} />);
+  const stage = screen.getByTestId('monster-stage');
+  const svg = within(stage).getByRole('img', { name: '1단계 몬스터' });
+  expect(Number(svg.getAttribute('width'))).toBeGreaterThanOrEqual(0.6 * 768);
+  // 카드 뒤 가운데에 선다
+  const box = svg.parentElement as HTMLElement;
+  expect(parseFloat(box.style.left) + Number(svg.getAttribute('width')) / 2).toBeCloseTo(512);
+});

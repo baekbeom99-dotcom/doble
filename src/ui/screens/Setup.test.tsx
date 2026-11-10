@@ -1,4 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { INITIALS } from '../../content/hangul';
 import type { PlayerConfig } from '../../engine/state';
 import { Setup } from './Setup';
 import { createSymbolSet } from '../../content/registry';
@@ -89,7 +90,7 @@ test('탑 쌓기는 라운드 수 대신 카드 수를 고른다', async () => {
 test('덧붙는 요소는 기본으로 켜져 있고 끌 수 있다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
-  fireEvent.click(screen.getByRole('checkbox', { name: '아이템' }));
+  fireEvent.click(screen.getByRole('switch', { name: '아이템' }));
   expect((await startWith(onStart)).rules).toEqual({ combo: true, finalRound: true, items: false });
 });
 test('팀 대결은 기본 4인 2:2이다', async () => {
@@ -178,4 +179,36 @@ test('혼자 하기: 몬스터 사냥은 1인 협동', async () => {
   const cfg = await startWith(onStart);
   expect(cfg).toMatchObject({ mode: 'coop', rules: { items: false } });
   expect(cfg.players).toHaveLength(1);
+});
+
+test('글자 세트의 초성은 콤보박스 대신 토글 버튼으로 고른다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
+  expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  const initials = within(screen.getByRole('group', { name: '초성' }));
+  expect(initials.getAllByRole('radio')).toHaveLength(INITIALS.length);
+  fireEvent.click(initials.getByRole('radio', { name: 'ㄴ' }));
+  fireEvent.click(screen.getByRole('switch', { name: '받침 있는 글자' }));
+  await startWith(onStart);
+  expect(onStart.mock.calls[0][0].set).toEqual({ kind: 'syllable', initial: 'ㄴ', batchim: true });
+});
+test('켜고 끄는 설정은 스위치로 보여준다', () => {
+  render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
+  expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+  expect(screen.getByRole('switch', { name: '읽어주기' })).toBeChecked();
+  fireEvent.click(screen.getByRole('radio', { name: '자음' }));
+  expect(screen.getByRole('switch', { name: '쌍자음 포함' })).not.toBeChecked();
+});
+test('혼자 하기는 중앙 카드를 돌리지 않는 것이 기본이다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="solo" onStart={onStart} onBack={() => {}} />);
+  expect(within(screen.getByRole('group', { name: '중앙 회전' })).getByRole('radio', { name: '안 돌림' })).toBeChecked();
+  await startWith(onStart);
+  expect(onStart.mock.calls[0][0].rotationStep).toBe(0);
+});
+test('같이 하기는 중앙 카드를 90°씩 돌리는 것이 기본이다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
+  await startWith(onStart);
+  expect(onStart.mock.calls[0][0].rotationStep).toBe(90);
 });

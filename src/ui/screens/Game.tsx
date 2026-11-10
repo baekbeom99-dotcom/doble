@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { SymbolDef } from '../../content/types';
 import { GameController } from '../../engine/controller';
 import { elementsOf } from '../../engine/coop/defense';
@@ -8,7 +8,7 @@ import { MODES } from '../../engine/modes';
 import { SURVIVAL_START_MS } from '../../engine/modes/soloSurvival';
 import { createGame } from '../../engine/reducer';
 import { createRng } from '../../engine/rng';
-import { computeTable, floorBand } from '../../engine/seats';
+import { computeTable, floorBand, SEAT_COLORS } from '../../engine/seats';
 import { pendingChoice } from '../../engine/modes/bomb';
 import { ROUND_SEED_STEP, type GameConfig, type GameState, type Grade, type RoundState } from '../../engine/state';
 import { opponentsOf, teamTotals } from '../../engine/teams';
@@ -17,11 +17,15 @@ import { CenterCard } from '../components/CenterCard';
 import { CoopPanel, type CoopBanner } from '../components/CoopPanel';
 import { SoloHud } from '../components/SoloHud';
 import { Hud } from '../components/Hud';
+import { CARD_SCALE, Monster, type MonsterMood } from '../components/Monster';
 import { extrasRect, SeatView } from '../components/SeatView';
 
 const FLASH_MS = 400;
 const BANNER_MS = 1200;
 const GRADE_MS = 800;
+/** 정답 때 화면 가장자리가 반짝이는 시간 */
+const EDGE_MS = 600;
+const HURT_MS = 450;
 const SEAT_SEED_STEP = 101;
 const CENTER_SEAT = 99;
 
@@ -31,6 +35,8 @@ interface Props {
   onOver: (s: GameState) => void;
   /** 서바이벌 최고 점수 (고스트) */
   best?: number | null;
+  /** 게임 중 나가기 */
+  onExit?: () => void;
 }
 
 /** 정답 직후 잠깐 이전 라운드를 보여주며 정답 글자를 강조한다 */
@@ -46,7 +52,7 @@ function useViewport() {
   return size;
 }
 
-export function Game({ config, symbols, onOver, best = null }: Props) {
+export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
   const byId = useMemo(() => new Map(symbols.map(s => [s.id, s])), [symbols]);
   const controllerRef = useRef<GameController | null>(null);
   if (!controllerRef.current) {
@@ -58,6 +64,10 @@ export function Game({ config, symbols, onOver, best = null }: Props) {
   const [wrongFlash, setWrongFlash] = useState<Set<number>>(new Set());
   const [banner, setBanner] = useState<CoopBanner | null>(null);
   const [lastGrade, setLastGrade] = useState<Grade | null>(null);
+  // 정답 때 가장자리 반짝임. key를 바꿔 연달아 맞혀도 애니메이션을 다시 시작한다
+  const [edge, setEdge] = useState<{ player: number; key: number } | null>(null);
+  const [hurt, setHurt] = useState(false);
+  const [confirmExit, setConfirmExit] = useState(false);
   const onOverRef = useRef(onOver);
   onOverRef.current = onOver;
   const freezeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -79,6 +89,13 @@ export function Game({ config, symbols, onOver, best = null }: Props) {
         if (e.type === 'correct') {
           const sym = byId.get(e.symbol);
           if (config.speech && sym) speak(sym.speech, sym.lang);
+          const flash = { player: e.player, key: performance.now() + Math.random() };
+          setEdge(flash);
+          timers.push(setTimeout(() => setEdge(cur => (cur === flash ? null : cur)), EDGE_MS));
+        }
+        if (e.type === 'damage') {
+          setHurt(true);
+          timers.push(setTimeout(() => setHurt(false), HURT_MS));
         }
         if (e.type === 'wrong') {
           setWrongFlash(prev => new Set(prev).add(e.player));
@@ -188,8 +205,26 @@ export function Game({ config, symbols, onOver, best = null }: Props) {
     </>
   );
 
+  const openExit = () => { controller.stop(); setConfirmExit(true); };
+  const resume = () => { setConfirmExit(false); controller.start(); };
+  const leave = () => { controller.stop(); onExit?.(); };
+  const mood: MonsterMood = hurt ? 'hurt' : coop?.challenge ? 'angry' : 'idle';
+  // 몬스터는 중앙 카드 뒤에 서서 카드를 품는다 (눈은 카드 양옆)
+  const monsterSize = CARD_SCALE * table.center.rx;
+
   return (
     <div className={isSolo && state.now < (state.mode.feverUntil ?? 0) ? "table is-fever" : "table"}>
+      {coop && (
+        <div className="monster-stage" data-testid="monster-stage">
+          <div className="monster-stage__rays" />
+          <div
+            className="monster-stage__body"
+            style={{ left: table.center.cx - monsterSize / 2, top: table.center.cy - monsterSize / 2 }}
+          >
+            <Monster stage={coop.stage} size={monsterSize} mood={mood} />
+          </div>
+        </div>
+      )}
       <CenterCard circle={table.center} symbols={round.center.map(id => byId.get(id)!)} placements={layouts.center} rotation={round.rotation} />
       {table.seats.map((seat, i) => (
         <SeatView
@@ -233,6 +268,34 @@ export function Game({ config, symbols, onOver, best = null }: Props) {
           )}
         </Hud>
       ))}
+      {edge && (
+        <div
+          key={edge.key}
+          className="edge-flash"
+          data-testid="edge-flash"
+          data-player={edge.player}
+          style={{ '--flash': SEAT_COLORS[config.players[edge.player].color] } as CSSProperties}
+        />
+      )}
+      <button
+        className="exit-btn"
+        style={{ left: table.exit.x, top: table.exit.y, width: table.exit.w, height: table.exit.h }}
+        onClick={openExit}
+      >
+        나가기
+      </button>
+      {confirmExit && (
+        <div className="dialog-backdrop">
+          <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="exit-title">
+            <h2 id="exit-title">게임을 그만할까요?</h2>
+            <p>지금 게임은 기록되지 않아요</p>
+            <div className="actions">
+              <button className="btn" onClick={leave}>그만하기</button>
+              <button className="btn btn--primary" onClick={resume}>계속하기</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

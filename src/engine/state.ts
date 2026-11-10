@@ -19,7 +19,7 @@ export interface GameConfig {
   mode: ModeId;
   players: PlayerConfig[];
   set: SetConfig;
-  rotationStep: 90 | 180;
+  rotationStep: 0 | 90 | 180;
   symbolRotation: boolean;
   speech: boolean;
   /** 라운드 수 (점수제·폭탄), 카드 수 (탑 쌓기). 기본 20 */

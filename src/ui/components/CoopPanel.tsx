@@ -1,6 +1,5 @@
 import { ELEMENTS } from '../../engine/coop/defense';
 import type { CoopState } from '../../engine/state';
-import { Monster } from './Monster';
 
 export type CoopBanner = '공격 준비!' | '막았다!' | '아야!';
 
@@ -22,7 +21,6 @@ export function CoopPanel({ coop, attackEvery, banner }: Props) {
     <div className="coop">
       {banner && <div className="coop__banner">{banner}</div>}
       <div className="coop__head">
-        <Monster stage={stage} size={44} />
         <div className="coop__stats">
           <span className="coop__stage">{stage}단계</span>
           <span className="meter meter--hp" aria-label={`몬스터 체력 ${hp}/${maxHp}`}>
