@@ -28,6 +28,8 @@ const FLASH_MS = 400;
 const MESSAGE_MS = 3200;
 /** 불을 뿜지 않을 때 거북이가 고개를 돌리는 간격 */
 const LOOK_MS = 2400;
+/** 불을 뿜기 전에 고개를 돌리는 시간 (.villain transition과 같다) */
+const TURN_MS = 700;
 const GRADE_MS = 800;
 /** 정답 때 화면 가장자리가 반짝이는 시간 */
 const EDGE_MS = 600;
@@ -79,21 +81,21 @@ function breathCone(len: number, w0: number, w1: number, wobble: number, phase: 
 function FireBeam({ from, to, r }: { from: { x: number; y: number }; to: { x: number; y: number }; r: number }) {
   const dx = to.x - from.x, dy = to.y - from.y;
   // 자리 안쪽까지 조금 더 파고들게 늘린다
-  const len = Math.hypot(dx, dy) + 0.35 * r;
+  const len = Math.hypot(dx, dy) + 0.7 * r;
   const angle = (Math.atan2(dy, dx) * 180) / Math.PI;
   const sparks = [[0.35, -0.7], [0.55, 0.85], [0.8, -1.1], [0.95, 0.6], [0.7, 0.1]];
   return (
     <svg className="fire-beam" data-testid="fire-beam" aria-hidden="true">
       <g transform={`translate(${from.x.toFixed(1)} ${from.y.toFixed(1)}) rotate(${angle.toFixed(1)})`}>
         <g className="fire-beam__flame">
-          <path d={breathCone(len, 0.12 * r, 0.75 * r, 0.18, 0)} fill="#b8361f" />
-          <path d={breathCone(len * 0.97, 0.09 * r, 0.56 * r, 0.2, 1.3)} fill="#e0602e" />
-          <path d={breathCone(len * 0.9, 0.06 * r, 0.36 * r, 0.22, 2.4)} fill="#f2a34a" />
-          <path d={breathCone(len * 0.78, 0.03 * r, 0.18 * r, 0.25, 3.1)} fill="#fbe08a" />
+          <path d={breathCone(len, 0.2 * r, 1.2 * r, 0.18, 0)} fill="#b8361f" />
+          <path d={breathCone(len * 0.97, 0.15 * r, 0.9 * r, 0.2, 1.3)} fill="#e0602e" />
+          <path d={breathCone(len * 0.9, 0.1 * r, 0.6 * r, 0.22, 2.4)} fill="#f2a34a" />
+          <path d={breathCone(len * 0.78, 0.05 * r, 0.3 * r, 0.25, 3.1)} fill="#fbe08a" />
         </g>
         <g className="fire-beam__sparks">
           {sparks.map(([t, side], i) => (
-            <circle key={i} cx={(len * t).toFixed(1)} cy={(side * 0.75 * r * t).toFixed(1)} r={(0.05 * r).toFixed(1)} fill={i % 2 ? '#fbe08a' : '#f2a34a'} />
+            <circle key={i} cx={(len * t).toFixed(1)} cy={(side * 1.1 * r * t).toFixed(1)} r={(0.08 * r).toFixed(1)} fill={i % 2 ? '#fbe08a' : '#f2a34a'} />
           ))}
         </g>
       </g>
@@ -194,6 +196,14 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
   }, []);
 
   const isCoop = config.mode === 'coop';
+  // 불 공격이 시작되면 고개를 다 돌린 뒤에 불을 내보낸다
+  const fireKey = state.coop?.fire ? `${state.coop.attackCount}-${state.coop.fire.target}` : null;
+  const [aimed, setAimed] = useState<string | null>(null);
+  useEffect(() => {
+    if (!fireKey) return;
+    const t = setTimeout(() => setAimed(fireKey), TURN_MS);
+    return () => clearTimeout(t);
+  }, [fireKey]);
   // 불을 뿜지 않을 때 악당 거북이가 이리저리 고개를 돌린다
   useEffect(() => {
     if (!isCoop) return;
@@ -287,6 +297,7 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
   const mood: TurtleMood = hurt ? 'hurt' : coop?.fire ? 'angry' : 'idle';
   // 불을 뿜을 때는 맞는 사람 쪽을 본다
   const fireTo = coop?.fire ? hitPoint(table.center, table.seats[coop.fire.target]) : null;
+  const showBeam = !!fireTo && aimed === fireKey;
   const heading = fireTo ? (Math.atan2(fireTo.y - table.center.cy, fireTo.x - table.center.cx) * 180) / Math.PI : look;
   const mouth = {
     x: table.center.cx + TURTLE_MOUTH * table.center.rx * Math.cos((heading * Math.PI) / 180),
@@ -345,7 +356,7 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
           )}
         </Hud>
       ))}
-      {fireTo && <FireBeam from={mouth} to={fireTo} r={table.center.rx} />}
+      {showBeam && fireTo && <FireBeam from={mouth} to={fireTo} r={table.center.rx} />}
       {edge && (
         <div
           key={edge.key}

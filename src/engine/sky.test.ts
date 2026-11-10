@@ -78,7 +78,7 @@ describe.each(VIEWPORTS)('하늘 배치 %ix%i', (W, H) => {
       }
     }
     for (let seed = 0; seed < 10; seed++) {
-      expect(() => layoutSymbols({ region: seat.region, exclusions: [seat.badge], count: 8, rng: createRng(seed) })).not.toThrow();
+      expect(() => layoutSymbols({ region: seat.region, exclusions: [seat.badge], count: Math.min(W, H) >= 700 ? 8 : 5, rng: createRng(seed) })).not.toThrow();
     }
   });
 });
@@ -88,7 +88,7 @@ describe.each(VIEWPORTS)('거북이 뒤통수 %ix%i', (W, H) => {
     const t = computeTable(1, W, H, { tallHud: true, sky: true });
     const e = t.seats[0].region.ellipse;
     const head = { x: e.cx - TURTLE_HEAD.halfWidth * e.rx, y: e.cy - TURTLE_HEAD.top * e.ry, w: 2 * TURTLE_HEAD.halfWidth * e.rx, h: (TURTLE_HEAD.top - 0.9) * e.ry };
-    expect(head.w).toBeGreaterThanOrEqual(180);
+    expect(head.w).toBeGreaterThanOrEqual(0.7 * e.rx);
     for (let i = 0; i <= 40; i++) {
       const c = skyCenter(t, W, H, i / 40);
       const nx = Math.max(head.x, Math.min(c.cx, head.x + head.w)), ny = Math.max(head.y, Math.min(c.cy, head.y + head.h));

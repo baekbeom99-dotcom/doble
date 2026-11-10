@@ -165,157 +165,160 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
   const teams = team ? teamsFor(count) : null;
   const roundsLabel = method === 'tower' ? '카드 수' : '라운드 수';
 
+  const startButton = symbols && max === 0
+    ? <p className="note">이 세트는 심볼이 너무 적어요</p>
+    : <button className="btn btn--primary setup__start" onClick={start}>시작</button>;
+
+  // 스크롤 없이 한 화면: 위 막대(처음으로·제목·시작) + 왼쪽(사람) / 오른쪽(규칙) 두 칸
   return (
-    <main className="screen">
-      <h1 className="title">{TITLES[kind]}</h1>
+    <main className="setup">
+      <header className="setup__bar">
+        <button className="btn setup__back" onClick={onBack}>처음으로</button>
+        <h1 className="setup__title">{TITLES[kind]}</h1>
+        {startButton}
+      </header>
 
-      {solo && (
-        <fieldset className="field" aria-label="방식">
-          <legend>방식</legend>
-          {(Object.keys(SOLO_METHODS) as SoloMethod[]).map(m => (
-            <Radio key={m} name="solo-method" label={SOLO_METHODS[m]} checked={soloMethod === m} onChange={() => setSoloMethod(m)} />
-          ))}
-        </fieldset>
-      )}
-      {stageMode && (
-        <fieldset className="field" aria-label="단계">
-          <legend>단계</legend>
-          {Array.from({ length: unlocked }, (_, i) => i + 1).map(n => (
-            <Radio key={n} name="stage" label={String(n)} checked={stage === n} onChange={() => setStagePick(n)} />
-          ))}
-        </fieldset>
-      )}
-
-      {COUNTS[kind].length > 1 && (
-        <fieldset className="field" aria-label="인원">
-          <legend>인원</legend>
-          {COUNTS[kind].map(n => <Radio key={n} name="count" label={`${n}명`} checked={count === n} onChange={() => changeCount(n)} />)}
-        </fieldset>
-      )}
-
-      {Array.from({ length: count }, (_, i) => (
-        <div className="field player" key={i}>
-          {teams && <span className="team-tag">{teams[i] === 0 ? 'A' : 'B'}</span>}
-          <input
-            className="input"
-            aria-label={`플레이어 ${i + 1} 이름`}
-            maxLength={NAME_MAX}
-            style={{ width: `${nameWidthEm(names[i])}em` }}
-            value={names[i]}
-            onChange={e => setNames(ns => ns.map((n, j) => (j === i ? e.target.value : n)))}
-          />
-          <fieldset className="colors" aria-label={`플레이어 ${i + 1} 색`}>
-            {(Object.keys(SEAT_COLORS) as SeatColor[]).map(c => (
-              <label key={c} className={colors[i] === c ? 'swatch swatch--on' : 'swatch'} style={{ background: SEAT_COLORS[c] }}>
-                <input
-                  type="radio"
-                  name={`color-${i}`}
-                  aria-label={COLOR_NAMES[c]}
-                  checked={colors[i] === c}
-                  disabled={colors.some((other, j) => j !== i && other === c)}
-                  onChange={() => setColors(cs => cs.map((x, j) => (j === i ? c : x)))}
-                />
-              </label>
-            ))}
-          </fieldset>
-          {!stageMode && (
-          <label className="range">
-            심볼 <b>{clampSize(sizes[i], sliderMax)}</b>
-            <input
-              type="range"
-              aria-label={`플레이어 ${i + 1} 심볼 수`}
-              min={MIN_CARD_SIZE}
-              max={sliderMax}
-              step={1}
-              value={clampSize(sizes[i], sliderMax)}
-              onChange={e => setSizes(ss => ss.map((v, j) => (j === i ? Number(e.target.value) : v)))}
-            />
-          </label>
+      <div className="setup__body">
+        <section className="setup__col" aria-label="사람">
+          {solo && (
+            <fieldset className="field" aria-label="방식">
+              <legend>방식</legend>
+              {(Object.keys(SOLO_METHODS) as SoloMethod[]).map(m => (
+                <Radio key={m} name="solo-method" label={SOLO_METHODS[m]} checked={soloMethod === m} onChange={() => setSoloMethod(m)} />
+              ))}
+              {stageMode && (
+                <fieldset className="toggles setup__line" aria-label="단계">
+                  <span className="setup__label">단계</span>
+                  {Array.from({ length: unlocked }, (_, i) => i + 1).map(n => (
+                    <Radio key={n} name="stage" label={String(n)} checked={stage === n} onChange={() => setStagePick(n)} />
+                  ))}
+                </fieldset>
+              )}
+            </fieldset>
           )}
-        </div>
-      ))}
-      {max > 0 && max < MAX_CARD_SIZE && <p className="note">심볼이 부족해서 카드당 최대 {max}개까지 쓸 수 있어요</p>}
 
-      <fieldset className="field" aria-label="세트">
-        <legend>글자</legend>
-        <Radio name="kind" label="자음" checked={setKind === 'consonant'} onChange={() => setSetKind('consonant')} />
-        <Radio name="kind" label="글자" checked={setKind === 'syllable'} onChange={() => setSetKind('syllable')} />
-        <Radio name="kind" label="알파벳" checked={setKind === 'alphabet'} onChange={() => setSetKind('alphabet')} />
-        <div className="sub">
-          {setKind === 'consonant' && <Check label="쌍자음 포함" checked={includeDouble} onChange={setIncludeDouble} />}
-          {setKind === 'syllable' && (
-            <>
-              <fieldset className="toggles" aria-label="초성">
-                {INITIALS.map(c => <Radio key={c} name="initial" label={c} checked={initial === c} onChange={() => setInitial(c)} />)}
-              </fieldset>
-              <Check label="받침 있는 글자" checked={batchim} onChange={setBatchim} />
-            </>
+          {COUNTS[kind].length > 1 && (
+            <fieldset className="field" aria-label="인원">
+              <legend>인원</legend>
+              {COUNTS[kind].map(n => <Radio key={n} name="count" label={`${n}명`} checked={count === n} onChange={() => changeCount(n)} />)}
+            </fieldset>
           )}
-          {setKind === 'alphabet' &&
-            (Object.keys(CASE_LABELS) as LetterCase[]).map(c => (
-              <Radio key={c} name="case" label={CASE_LABELS[c]} checked={letterCase === c} onChange={() => setLetterCase(c)} />
-            ))}
-        </div>
-      </fieldset>
 
-      {versusLike && (
-        <>
-          <fieldset className="field" aria-label="대결 방식">
-            <legend>대결 방식</legend>
-            {(Object.keys(METHOD_NAMES) as Method[]).map(m => (
-              <Radio key={m} name="method" label={METHOD_NAMES[m]} checked={method === m} onChange={() => setMethod(m)} />
-            ))}
-          </fieldset>
-
-          {method === 'bomb' && (
-            <>
-              <fieldset className="field" aria-label="시작 카드">
-                <legend>시작 카드</legend>
-                {HAND_OPTIONS.map(n => (
-                  <Radio key={n} name="hand" label={`${n}장`} checked={bomb.startHand === n} onChange={() => setBomb(b => ({ ...b, startHand: n }))} />
+          {Array.from({ length: count }, (_, i) => (
+            <div className="field player" key={i}>
+              {teams && <span className="team-tag">{teams[i] === 0 ? 'A' : 'B'}</span>}
+              <input
+                className="input"
+                aria-label={`플레이어 ${i + 1} 이름`}
+                maxLength={NAME_MAX}
+                style={{ width: `${nameWidthEm(names[i])}em` }}
+                value={names[i]}
+                onChange={e => setNames(ns => ns.map((n, j) => (j === i ? e.target.value : n)))}
+              />
+              <fieldset className="colors" aria-label={`플레이어 ${i + 1} 색`}>
+                {(Object.keys(SEAT_COLORS) as SeatColor[]).map(c => (
+                  <label key={c} className={colors[i] === c ? 'swatch swatch--on' : 'swatch'} style={{ background: SEAT_COLORS[c] }}>
+                    <input
+                      type="radio"
+                      name={`color-${i}`}
+                      aria-label={COLOR_NAMES[c]}
+                      checked={colors[i] === c}
+                      disabled={colors.some((other, j) => j !== i && other === c)}
+                      onChange={() => setColors(cs => cs.map((x, j) => (j === i ? c : x)))}
+                    />
+                  </label>
                 ))}
               </fieldset>
-              <fieldset className="field" aria-label="넘길 사람">
-                <legend>넘길 사람</legend>
-                <Radio name="target" label="무작위" checked={bomb.target === 'random'} onChange={() => setBomb(b => ({ ...b, target: 'random' }))} />
-                <Radio name="target" label="직접 고르기" checked={bomb.target === 'choose'} onChange={() => setBomb(b => ({ ...b, target: 'choose' }))} />
+              {!stageMode && (
+                <label className="range">
+                  심볼 <b>{clampSize(sizes[i], sliderMax)}</b>
+                  <input
+                    type="range"
+                    aria-label={`플레이어 ${i + 1} 심볼 수`}
+                    min={MIN_CARD_SIZE}
+                    max={sliderMax}
+                    step={1}
+                    value={clampSize(sizes[i], sliderMax)}
+                    onChange={e => setSizes(ss => ss.map((v, j) => (j === i ? Number(e.target.value) : v)))}
+                  />
+                </label>
+              )}
+            </div>
+          ))}
+          {max > 0 && max < MAX_CARD_SIZE && <p className="note">심볼이 부족해서 카드당 최대 {max}개까지 쓸 수 있어요</p>}
+        </section>
+
+        <section className="setup__col" aria-label="규칙">
+          <fieldset className="field" aria-label="세트">
+            <legend>글자</legend>
+            <Radio name="kind" label="자음" checked={setKind === 'consonant'} onChange={() => setSetKind('consonant')} />
+            <Radio name="kind" label="글자" checked={setKind === 'syllable'} onChange={() => setSetKind('syllable')} />
+            <Radio name="kind" label="알파벳" checked={setKind === 'alphabet'} onChange={() => setSetKind('alphabet')} />
+            <div className="sub">
+              {setKind === 'consonant' && <Check label="쌍자음 포함" checked={includeDouble} onChange={setIncludeDouble} />}
+              {setKind === 'syllable' && (
+                <>
+                  <fieldset className="toggles" aria-label="초성">
+                    {INITIALS.map(c => <Radio key={c} name="initial" label={c} checked={initial === c} onChange={() => setInitial(c)} />)}
+                  </fieldset>
+                  <Check label="받침 있는 글자" checked={batchim} onChange={setBatchim} />
+                </>
+              )}
+              {setKind === 'alphabet' &&
+                (Object.keys(CASE_LABELS) as LetterCase[]).map(c => (
+                  <Radio key={c} name="case" label={CASE_LABELS[c]} checked={letterCase === c} onChange={() => setLetterCase(c)} />
+                ))}
+            </div>
+          </fieldset>
+
+          {versusLike && (
+            <fieldset className="field" aria-label="대결 방식">
+              <legend>대결 방식</legend>
+              {(Object.keys(METHOD_NAMES) as Method[]).map(m => (
+                <Radio key={m} name="method" label={METHOD_NAMES[m]} checked={method === m} onChange={() => setMethod(m)} />
+              ))}
+              <fieldset className="toggles setup__line" aria-label={roundsLabel}>
+                <span className="setup__label">{roundsLabel}</span>
+                {ROUND_OPTIONS.map(n => <Radio key={n} name="rounds" label={`${n}`} checked={rounds === n} onChange={() => setRounds(n)} />)}
               </fieldset>
-            </>
+              {method === 'bomb' && (
+                <>
+                  <fieldset className="toggles setup__line" aria-label="시작 카드">
+                    <span className="setup__label">시작 카드</span>
+                    {HAND_OPTIONS.map(n => (
+                      <Radio key={n} name="hand" label={`${n}장`} checked={bomb.startHand === n} onChange={() => setBomb(b => ({ ...b, startHand: n }))} />
+                    ))}
+                  </fieldset>
+                  <fieldset className="toggles setup__line" aria-label="넘길 사람">
+                    <span className="setup__label">넘길 사람</span>
+                    <Radio name="target" label="무작위" checked={bomb.target === 'random'} onChange={() => setBomb(b => ({ ...b, target: 'random' }))} />
+                    <Radio name="target" label="직접 고르기" checked={bomb.target === 'choose'} onChange={() => setBomb(b => ({ ...b, target: 'choose' }))} />
+                  </fieldset>
+                </>
+              )}
+              <fieldset className="toggles setup__line" aria-label="덧붙는 요소">
+                <span className="setup__label">덧붙는 요소</span>
+                {(Object.keys(RULE_NAMES) as (keyof Rules)[]).map(r => (
+                  <Check key={r} label={RULE_NAMES[r]} checked={rules[r]} onChange={v => setRules(rs => ({ ...rs, [r]: v }))} />
+                ))}
+              </fieldset>
+            </fieldset>
           )}
 
-          <fieldset className="field" aria-label={roundsLabel}>
-            <legend>{roundsLabel}</legend>
-            {ROUND_OPTIONS.map(n => <Radio key={n} name="rounds" label={`${n}`} checked={rounds === n} onChange={() => setRounds(n)} />)}
+          <fieldset className="field" aria-label="그 밖의 설정">
+            <legend>그 밖의 설정</legend>
+            <fieldset className="toggles setup__line" aria-label="중앙 회전">
+              <span className="setup__label">중앙 카드 회전</span>
+              <Radio name="rot" label="안 돌림" checked={rotationStep === 0} onChange={() => setRotationStep(0)} />
+              <Radio name="rot" label="90°" checked={rotationStep === 90} onChange={() => setRotationStep(90)} />
+              <Radio name="rot" label="180°" checked={rotationStep === 180} onChange={() => setRotationStep(180)} />
+            </fieldset>
+            <div className="setup__line">
+              <Check label="심볼 회전" checked={symbolRotation} onChange={setSymbolRotation} />
+              <Check label="읽어주기" checked={speech} onChange={setSpeech} />
+            </div>
           </fieldset>
-
-          <fieldset className="field" aria-label="덧붙는 요소">
-            <legend>덧붙는 요소</legend>
-            {(Object.keys(RULE_NAMES) as (keyof Rules)[]).map(r => (
-              <Check key={r} label={RULE_NAMES[r]} checked={rules[r]} onChange={v => setRules(rs => ({ ...rs, [r]: v }))} />
-            ))}
-          </fieldset>
-        </>
-      )}
-
-      <fieldset className="field" aria-label="중앙 회전">
-        <legend>중앙 카드 회전</legend>
-        <Radio name="rot" label="안 돌림" checked={rotationStep === 0} onChange={() => setRotationStep(0)} />
-        <Radio name="rot" label="90°" checked={rotationStep === 90} onChange={() => setRotationStep(90)} />
-        <Radio name="rot" label="180°" checked={rotationStep === 180} onChange={() => setRotationStep(180)} />
-      </fieldset>
-
-      <div className="field">
-        <Check label="심볼 회전" checked={symbolRotation} onChange={setSymbolRotation} />
-        <Check label="읽어주기" checked={speech} onChange={setSpeech} />
-      </div>
-
-      <div className="actions">
-        <button className="btn" onClick={onBack}>처음으로</button>
-        {symbols && max === 0 ? (
-          <p className="note">이 세트는 심볼이 너무 적어요</p>
-        ) : (
-          <button className="btn btn--primary" onClick={start}>시작</button>
-        )}
+        </section>
       </div>
     </main>
   );

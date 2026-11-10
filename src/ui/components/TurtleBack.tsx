@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import type { Ellipse } from '../../engine/geometry';
 import { paperShades } from '../../engine/seats';
 import { TURTLE_HEAD } from '../../engine/sky';
@@ -6,6 +7,18 @@ import { TURTLE_HEAD } from '../../engine/sky';
 export const TURTLE_SHELL = '#86b77e';
 const SKIN = '#f1dcc0';
 const SKIN_SHADE = '#e2c59f';
+/** 맞혔을 때 뒤통수 홍조 (분홍 사선) */
+const BLUSH = '#f08aa0';
+/** 홍조 사선 묶음의 가운데 x (양쪽), 사선 3개씩 */
+const BLUSH_X = [-0.2, 0.2];
+/** 홍조가 남아 있는 시간 */
+const BLUSH_MS = 1200;
+
+/** 짧은 분홍 사선 하나 (뒤통수 가운데 높이) */
+function blushLine(x: number): string {
+  const y = -(TURTLE_HEAD.top + 0.9) / 2;
+  return `M${(x - 0.025).toFixed(3)} ${(y + 0.04).toFixed(3)} L${(x + 0.025).toFixed(3)} ${(y - 0.04).toFixed(3)}`;
+}
 /** 영역 타원 반지름의 몇 배까지 그림을 그릴지 (머리·다리가 영역 밖으로 나온다) */
 const PAD = 1.5;
 /** 등껍질 격자 무늬 간격 (타원 반지름 1 기준) */
@@ -26,6 +39,8 @@ interface Props {
   ellipse: Ellipse;
   /** under: 등껍질 뒤 목·머리·다리, over: 등껍질 위 격자 무늬 */
   layer: 'under' | 'over';
+  /** 방금 맞혔다: 머리가 들썩이고 뒤통수에 홍조 */
+  cheer?: boolean;
 }
 
 /**
@@ -33,7 +48,18 @@ interface Props {
  * 영역 타원이 초록 등껍질이고, 등껍질 위로 긴 목과 동그란 뒤통수가 빼꼼 나온다.
  * 좌표는 타원 반지름을 1로 둔 값이다 (y = -1이 등껍질 꼭대기).
  */
-export function TurtleBack({ index, ellipse, layer }: Props) {
+export function TurtleBack({ index, ellipse, layer, cheer = false }: Props) {
+  // 맞힐 때마다 홍조를 잠시 띄운다
+  // (정답 강조가 먼저 끝나도 홍조 타이머는 지우지 않고, 화면을 떠날 때만 지운다)
+  const [blush, setBlush] = useState(false);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!cheer) return;
+    setBlush(true);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => setBlush(false), BLUSH_MS);
+  }, [cheer]);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   const { cx, cy, rx, ry } = ellipse;
   const [mid, dark] = paperShades(TURTLE_SHELL);
   const style = { left: cx - PAD * rx, top: cy - PAD * ry, width: 2 * PAD * rx, height: 2 * PAD * ry };
@@ -57,9 +83,15 @@ export function TurtleBack({ index, ellipse, layer }: Props) {
           <ellipse cx="1.04" cy="-0.12" rx="0.16" ry="0.12" fill={SKIN_SHADE} />
           <ellipse cx="1.03" cy="-0.14" rx="0.14" ry="0.1" fill={SKIN} />
           {/* 뒤통수: 엄지손가락처럼 굵고 끝이 둥근 기둥. 얼굴은 앞을 보고 있어 보이지 않는다. 머리만 살랑살랑 움직인다 */}
-          <g className="turtle-back__head">
+          <g className={cheer ? 'turtle-back__head is-cheer' : 'turtle-back__head'}>
             <path d={thumb(TURTLE_HEAD.halfWidth, TURTLE_HEAD.top, rx / ry)} fill={SKIN} />
-            <path d={thumb(TURTLE_HEAD.halfWidth * 0.4, TURTLE_HEAD.top - 0.04, rx / ry, TURTLE_HEAD.halfWidth * 0.6)} fill={SKIN_SHADE} />
+            {(cheer || blush) && (
+              <g data-testid={`turtle-blush-${index}`} stroke={BLUSH} strokeWidth="4" strokeLinecap="round">
+                {BLUSH_X.map(x => [0, 1, 2].map(k => (
+                  <path key={`${x}-${k}`} d={blushLine(x + Math.sign(x) * k * 0.07)} vectorEffect="non-scaling-stroke" />
+                )))}
+              </g>
+            )}
           </g>
         </>
       ) : (

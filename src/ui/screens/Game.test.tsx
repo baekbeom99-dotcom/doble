@@ -167,6 +167,9 @@ test('협동: 공격 시간이 되면 거북이가 한 사람에게 불을 뿜�
     for (let t = 0; t < 13000 && !document.querySelector('.seat-region.is-burning'); t += 200) act(() => { vi.advanceTimersByTime(200); });
     expect(screen.getAllByRole('status')[0]).toHaveTextContent(/악당 거북이가 .+에게 불을 뿜었어요/);
     expect(document.querySelectorAll('.seat-region.is-burning')).toHaveLength(1);
+    // 먼저 고개를 돌리고, 다 돌린 뒤에 불이 나간다
+    expect(screen.queryByTestId('fire-beam')).not.toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(800); });
     expect(screen.getByTestId('fire-beam')).toBeInTheDocument();
   } finally { vi.useRealTimers(); }
 });

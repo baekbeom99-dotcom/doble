@@ -84,7 +84,7 @@ export function SeatView(props: Props) {
 
   return (
     <div className={dim ? 'seat seat--dim' : 'seat'} data-testid={`seat-${index}`}>
-      {turtle && <TurtleBack index={index} ellipse={geom.region.ellipse} layer="under" />}
+      {turtle && <TurtleBack index={index} ellipse={geom.region.ellipse} layer="under" cheer={flash === 'correct'} />}
       <div className={regionClass} style={{ ...box, ...regionStyle(hex) }} />
       {turtle && <TurtleBack index={index} ellipse={geom.region.ellipse} layer="over" />}
       {symbols.map((s, i) => (

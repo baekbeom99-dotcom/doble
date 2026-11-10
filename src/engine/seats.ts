@@ -19,8 +19,10 @@ export interface TableGeom {
   exit: Rect;
 }
 
-const CENTER_RATIO = 0.22;
-const SOLO_CENTER_RATIO = 0.26;
+/** 영역 크기 배율: 2026-11-10에 모든 영역을 20% 줄였다 */
+const AREA_SCALE = 0.8;
+const CENTER_RATIO = 0.22 * AREA_SCALE;
+const SOLO_CENTER_RATIO = 0.26 * AREA_SCALE;
 const MIN_GAP_RATIO = 0.2;
 const SHRINK = 0.95;
 /** 화면이 아주 작아 조건을 끝내 만족하지 못할 때 무한히 줄이지 않도록 하는 상한 */
@@ -59,7 +61,7 @@ export interface TableOptions {
   coop?: boolean;
 }
 
-const COOP_CENTER_RATIO = 0.17;
+const COOP_CENTER_RATIO = 0.17 * AREA_SCALE;
 /** 협동에서 자리 영역은 카드 반지름의 2.2배 밖에 둔다 (거북이 머리·다리) */
 const COOP_GAP_RATIO = 1.2;
 
@@ -83,7 +85,8 @@ export function computeTable(playerCount: 1 | 2 | 3 | 4, W: number, H: number, o
   const R0 = ratio * Math.min(W, H);
   const center: Ellipse = { cx: W / 2, cy: H / 2, rx: R0, ry: R0 };
   const hudH = 0.075 * H;
-  const box: HudBox = opts.tallHud ? { w: 0.2 * W, h: 0.2 * H } : { w: 0.16 * W, h: hudH };
+  // 협동·혼자 하기 정보 칸: 줄 간격을 줄여 세로를 0.15H로 낮췄다
+  const box: HudBox = opts.tallHud ? { w: 0.2 * W, h: 0.15 * H } : { w: 0.16 * W, h: hudH };
   const screen: Rect = { x: 0, y: 0, w: W, h: H };
   const minGap = gapRatio * R0;
   const table = playerCount === 1
@@ -105,20 +108,19 @@ function exitRect(n: number, W: number, H: number): Rect {
   return { x: W / 2 - EXIT_W / 2, y: m, w: EXIT_W, h: EXIT_H };
 }
 
-const SKY_RADIUS = 0.19;
-const SKY_SEAT_RY = 0.42;
-const SKY_SEAT_RX = 0.36;
+const SKY_RADIUS = 0.19 * AREA_SCALE;
+/** 혼자 하기 등껍질은 정반원: 반지름 0.42H × 0.8에서 시작해 정보 칸·해와 닿지 않을 때까지 줄인다 */
+const SKY_SEAT_R = 0.42 * AREA_SCALE;
 const SKY_SAMPLES = 24;
 
 /**
  * 1인 하늘·바다 장면: 정보 칸은 왼쪽 아래, 자리는 아래 가운데 반타원.
  * 중앙 카드(해·달)는 skyArc를 따라 움직이므로 center는 출발 위치(t=0)다.
- * 자리 가로 반지름은 정보 칸과 겹치지 않고, 해가 어디 있어도 0.2R 간격이 남을 때까지 줄인다.
+ * 자리는 정반원(가로·세로 반지름이 같다)이고, 정보 칸과 겹치지 않고 해가 어디 있어도 0.2R 간격이 남을 때까지 줄인다.
  */
 function skyTable(W: number, H: number, hudH: number, box: HudBox, screen: Rect): Omit<TableGeom, 'exit'> {
   const R = SKY_RADIUS * Math.min(W, H);
   const hudRect: Rect = { x: 0.02 * W, y: H - 0.02 * H - box.h, w: box.w, h: box.h };
-  const ry = SKY_SEAT_RY * H;
   const clearOfSun = (e: Ellipse) => {
     const region = { ellipse: e, clip: screen };
     for (let i = 0; i <= SKY_SAMPLES; i++) {
@@ -130,10 +132,11 @@ function skyTable(W: number, H: number, hudH: number, box: HudBox, screen: Rect)
     }
     return true;
   };
-  const rx = shrinkUntil(SKY_SEAT_RX * W, v => {
-    const e = { cx: W / 2, cy: H, rx: v, ry };
+  const rx = shrinkUntil(SKY_SEAT_R * Math.min(W, H), v => {
+    const e = { cx: W / 2, cy: H, rx: v, ry: v };
     return clearOf(e, [hudRect]) && clearOfSun(e);
   });
+  const ry = rx;
   const ellipse: Ellipse = { cx: W / 2, cy: H, rx, ry };
   const cos = Math.cos((20 * Math.PI) / 180), sin = Math.sin((20 * Math.PI) / 180);
   const seat: SeatGeom = {
@@ -147,8 +150,8 @@ function skyTable(W: number, H: number, hudH: number, box: HudBox, screen: Rect)
 }
 
 const SOLO_MARGIN = 0.03;
-const SOLO_RX = 0.42;
-const SOLO_RY = 0.46;
+const SOLO_RX = 0.42 * AREA_SCALE;
+const SOLO_RY = 0.46 * AREA_SCALE;
 
 /** 1인: 중앙 카드를 위 가운데, 자리 반타원을 아래 가운데에 놓아 한쪽으로 치우치지 않게 한다 */
 function soloTable(W: number, H: number, hudH: number, box: HudBox, screen: Rect, ratio: number, gapRatio: number): Omit<TableGeom, 'exit'> {
@@ -173,7 +176,7 @@ function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: 
   const hudRects: Rect[] = [{ x: 0.02 * W, y: H - 0.02 * H - box.h, w: box.w, h: box.h }];
   if (n === 2) hudRects.push({ x: W - 0.02 * W - box.w, y: 0.02 * H, w: box.w, h: box.h });
   const gapOf = (r: number) => Math.hypot(W - 0.94 * r - center.cx, H - center.cy) - r - center.rx;
-  const r = shrinkUntil(0.4 * H, v =>
+  const r = shrinkUntil(0.4 * AREA_SCALE * H, v =>
     gapOf(v) >= minGap &&
     clearOf({ cx: W - 0.94 * v, cy: H, rx: v, ry: v }, hudRects) &&
     (n === 1 || clearOf({ cx: 0.94 * v, cy: 0, rx: v, ry: v }, hudRects)));
@@ -220,7 +223,7 @@ function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: numb
     const e = { cx: rx / 3, cy: ry / 3, rx, ry };
     return ellipseGap(e, center.cx, center.cy) - center.rx >= minGap && clearOf(e, hudRects);
   };
-  const scale = shrinkUntil(1, fits);
+  const scale = shrinkUntil(AREA_SCALE, fits);
   const rx = 0.3 * W * scale, ry = 0.29 * H * scale;
 
   const positions = n === 4 ? [0, 1, 2, 3] : [0, 1, 3];

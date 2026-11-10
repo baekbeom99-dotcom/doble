@@ -526,7 +526,7 @@ body::after {
 .sky__halo svg { filter: drop-shadow(0 4px 5px rgba(120, 60, 20, .3)); }
 
 /* ---------- 타이틀: 종이 풍경 (하늘·구름·겹친 고리 해·언덕·하얀 거북이)과 세로 모드 카드 ---------- */
-.title {
+.title-screen {
   position: relative;
   height: 100%;
   overflow: hidden;
@@ -575,7 +575,6 @@ body::after {
   letter-spacing: .02em;
   z-index: 1;
 }
-.title__name span:last-child { font-size: .82em; color: #fff3d6; }
 .title__hills {
   position: absolute;
   left: 0;
@@ -644,3 +643,61 @@ body::after {
   25% { transform: rotate(-4deg) translateY(-1.5%); }
   75% { transform: rotate(4deg) translateY(-1.5%); }
 }
+/* 맞히면 뒤통수가 들썩인다 */
+.turtle-back__head.is-cheer { animation: head-cheer 400ms ease-out; }
+@keyframes head-cheer {
+  0% { transform: translateY(0); }
+  35% { transform: translateY(-14%); }
+  60% { transform: translateY(-4%); }
+  100% { transform: translateY(0); }
+}
+
+/* ---------- 정보 칸 촘촘하게 (2026-11-10): 줄 간격과 여백을 줄인다 ---------- */
+.solo, .coop { gap: 0; padding: 4px 10px; line-height: 1.05; justify-content: space-evenly; }
+.solo__time, .solo__score { font-size: 20px; line-height: 1.05; }
+.solo__effects { min-height: 20px; }
+.solo__grade { font-size: 18px; }
+.solo__ghost { gap: 1px; font-size: 12px; line-height: 1; }
+.meter { height: 10px; }
+.coop__stage { font-size: 14px; }
+.coop__hearts { font-size: 12px; }
+.coop__fire { font-size: 14px; line-height: 1.05; }
+.coop__attack { font-size: 12px; }
+.coop__mission { font-size: 12px; line-height: 1.1; }
+.coop__mission > span { -webkit-line-clamp: 1; white-space: nowrap; text-overflow: ellipsis; display: block; min-width: 0; }
+
+/* ---------- 게임 설정: 한 화면에 (위 막대 + 두 칸) ---------- */
+.setup {
+  height: 100%;
+  box-sizing: border-box;
+  padding: 18px 28px 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  overflow: hidden;
+}
+.setup__bar { display: flex; align-items: center; gap: 24px; padding: 6px 12px 0; }
+.setup__title { flex: 1; margin: 0; font-size: 36px; font-weight: 400; text-align: center; }
+.setup__back, .setup__start { font-size: 20px; padding: 10px 28px; }
+.setup__body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 34px; padding: 12px; }
+.setup__col { display: flex; flex-direction: column; gap: 24px; min-height: 0; }
+.setup .field { margin: 0; padding: 10px 14px 12px; gap: 8px; font-size: 16px; align-items: center; }
+/* 이름표를 칸 안 첫 줄로 넣는다 */
+.setup .field > legend { float: left; width: 100%; padding: 0; margin-bottom: 2px; font-size: 14px; color: #7a5c48; }
+.setup .chip { padding: 4px 14px; font-size: 16px; }
+.setup .toggles { gap: 6px; }
+.setup .toggles .chip { min-width: 38px; padding: 4px 8px; font-size: 17px; }
+.setup .sub { gap: 8px; }
+.setup .note { font-size: 14px; }
+.setup__line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: 100%; border: 0; padding: 0; margin: 0; }
+.setup__label { font-size: 14px; color: #7a5c48; min-width: 5.4em; }
+.setup .player { flex-wrap: nowrap; padding: 8px 12px; }
+.setup .player .input { font-size: 17px; padding: 4px 8px; min-width: 0; }
+.setup .colors { gap: 6px; }
+.setup .swatch { width: 30px; height: 30px; flex: none; }
+.setup .range { gap: 6px; font-size: 15px; white-space: nowrap; }
+.setup .range input { width: 96px; }
+.setup .switch { font-size: 16px; }
+.setup .switch__track { width: 48px; height: 28px; }
+.setup .switch__track > i { width: 20px; height: 20px; }
+.setup .switch--on .switch__track > i { left: 24px; }

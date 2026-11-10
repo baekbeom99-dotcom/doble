@@ -104,7 +104,7 @@ function ModeIcon({ kind }: { kind: SetupKind }) {
 
 export function Home({ onPick, onCollection }: { onPick: (kind: SetupKind) => void; onCollection?: () => void }) {
   return (
-    <main className="title">
+    <main className="title-screen">
       <svg className="title__sky" viewBox="0 0 1000 750" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
         <rect width="1000" height="750" fill="#8fd3c3" />
       </svg>

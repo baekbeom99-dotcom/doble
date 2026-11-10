@@ -5,6 +5,8 @@ import { computeTable, floorBand, nameArc, paperShades, shrinkUntil, type TableG
 
 const VIEWPORTS: [number, number][] = [[1024, 768], [1280, 800], [1180, 820], [960, 600]];
 const COUNTS = [1, 2, 3, 4] as const;
+/** 1024×768 이상은 44px로 8개, 작은 960×600은 기본 카드 크기인 5개까지 엄격하게 들어간다 (그 이상은 글자를 줄여 넣는다) */
+const fitCount = (W: number, H: number) => (Math.min(W, H) >= 700 ? 8 : 5);
 
 function gridPoints(r: Rect, step = 8): [number, number][] {
   const pts: [number, number][] = [];
@@ -64,11 +66,11 @@ describe.each(VIEWPORTS)('%ix%i', (W, H) => {
     const c = t.center;
     for (let seed = 0; seed < 30; seed++) {
       for (const s of t.seats) {
-        expect(() => layoutSymbols({ region: s.region, exclusions: [s.badge], count: 8, rng: createRng(seed) })).not.toThrow();
+        expect(() => layoutSymbols({ region: s.region, exclusions: [s.badge], count: fitCount(W, H), rng: createRng(seed) })).not.toThrow();
       }
       expect(() => layoutSymbols({
         region: { ellipse: c, clip: { x: c.cx - c.rx, y: c.cy - c.ry, w: 2 * c.rx, h: 2 * c.ry } },
-        exclusions: [], count: 8, rng: createRng(seed),
+        exclusions: [], count: fitCount(W, H), rng: createRng(seed),
       })).not.toThrow();
     }
   });
@@ -83,7 +85,7 @@ describe('중앙 카드 바닥 띠', () => {
     for (let seed = 0; seed < 30; seed++) {
       expect(() => layoutSymbols({
         region: { ellipse: c, clip: { x: c.cx - c.rx, y: c.cy - c.ry, w: 2 * c.rx, h: 2 * c.ry } },
-        exclusions: [floorBand(c)], count: 8, rng: createRng(seed),
+        exclusions: [floorBand(c)], count: fitCount(W, H), rng: createRng(seed),
       })).not.toThrow();
     }
   });
@@ -103,11 +105,11 @@ describe('shrinkUntil', () => {
 });
 
 describe.each(VIEWPORTS)('tallHud %ix%i', (W, H) => {
-  test.each(COUNTS)('%i인: 정보 칸이 0.2H 높이이고 자리·중앙 카드와 겹치지 않으며 글자 8개가 들어간다', n => {
+  test.each(COUNTS)('%i인: 정보 칸이 0.15H 높이이고 자리·중앙 카드와 겹치지 않으며 글자 8개가 들어간다', n => {
     const t = computeTable(n, W, H, { tallHud: true });
     expect(t.hud.length).toBe(n === 1 ? 1 : 2);
     for (const h of t.hud) {
-      expect(h.rect.h).toBeCloseTo(0.2 * H);
+      expect(h.rect.h).toBeCloseTo(0.15 * H);
       expect(h.rect.w).toBeCloseTo(0.2 * W);
       expect(inside(W, H, h.rect)).toBe(true);
       expect(rectCircleDist(h.rect, t)).toBeGreaterThan(t.center.rx);
@@ -115,7 +117,7 @@ describe.each(VIEWPORTS)('tallHud %ix%i', (W, H) => {
       for (const s of t.seats) expect(overlap(h.rect, s.badge)).toBe(false);
     }
     for (let seed = 0; seed < 10; seed++) for (const s of t.seats) {
-      expect(() => layoutSymbols({ region: s.region, exclusions: [s.badge], count: 8, rng: createRng(seed) })).not.toThrow();
+      expect(() => layoutSymbols({ region: s.region, exclusions: [s.badge], count: fitCount(W, H), rng: createRng(seed) })).not.toThrow();
     }
   });
 });
@@ -127,17 +129,17 @@ test.each(VIEWPORTS)('%ix%i 1인은 중앙 카드를 위, 자리를 아래 가�
   expect(e.cy).toBeCloseTo(H);
   expect(t.center.cx).toBeCloseTo(W / 2);
   expect(t.center.cy).toBeLessThan(H / 2);
-  expect(t.center.rx).toBeGreaterThan(0.22 * Math.min(W, H));
-  expect(t.center.rx).toBeLessThanOrEqual(0.26 * Math.min(W, H) + 1e-9);
+  expect(t.center.rx).toBeGreaterThan(0.22 * 0.8 * Math.min(W, H));
+  expect(t.center.rx).toBeLessThanOrEqual(0.26 * 0.8 * Math.min(W, H) + 1e-9);
   for (const [x, y] of gridPoints({ x: 0, y: 0, w: W, h: H })) {
     if (pointInRegion(x, y, t.seats[0].region)) expect(Math.hypot(x - t.center.cx, y - t.center.cy)).toBeGreaterThanOrEqual(t.center.rx * 1.2);
   }
   for (let seed = 0; seed < 10; seed++) {
-    expect(() => layoutSymbols({ region: t.seats[0].region, exclusions: [t.seats[0].badge], count: 8, rng: createRng(seed) })).not.toThrow();
+    expect(() => layoutSymbols({ region: t.seats[0].region, exclusions: [t.seats[0].badge], count: fitCount(W, H), rng: createRng(seed) })).not.toThrow();
   }
 });
-test('2인 중앙 카드는 그대로 0.22×min(W,H)이다', () => {
-  expect(computeTable(2, 1024, 768).center.rx).toBeCloseTo(0.22 * 768);
+test('2인 중앙 카드는 0.22×0.8×min(W,H)이다 (영역 20% 축소)', () => {
+  expect(computeTable(2, 1024, 768).center.rx).toBeCloseTo(0.22 * 0.8 * 768);
 });
 
 describe.each(VIEWPORTS)('나가기 버튼 %ix%i', (W, H) => {
@@ -186,13 +188,13 @@ describe('nameArc', () => {
 });
 
 describe.each(VIEWPORTS)('협동 배치 %ix%i', (W, H) => {
-  test.each(COUNTS)('%i인: 중앙 카드는 0.17×min(W,H)이고 자리는 카드 반지름 2.2배 밖에 있다 (거북이 자리)', n => {
+  test.each(COUNTS)('%i인: 중앙 카드는 0.17×0.8×min(W,H)이고 자리는 카드 반지름 2.2배 밖에 있다 (거북이 자리)', n => {
     const t = computeTable(n, W, H, { tallHud: true, coop: true });
     // 1인은 위에 카드, 아래에 자리를 두므로 간격을 지키려고 카드가 조금 작아질 수 있다
     if (n === 1) {
-      expect(t.center.rx).toBeLessThanOrEqual(0.17 * Math.min(W, H) + 1e-9);
-      expect(t.center.rx).toBeGreaterThan(0.14 * Math.min(W, H));
-    } else expect(t.center.rx).toBeCloseTo(0.17 * Math.min(W, H));
+      expect(t.center.rx).toBeLessThanOrEqual(0.17 * 0.8 * Math.min(W, H) + 1e-9);
+      expect(t.center.rx).toBeGreaterThan(0.14 * 0.8 * Math.min(W, H));
+    } else expect(t.center.rx).toBeCloseTo(0.17 * 0.8 * Math.min(W, H));
     for (const s of t.seats) for (const [x, y] of gridPoints({ x: 0, y: 0, w: W, h: H }, 6)) {
       if (pointInRegion(x, y, s.region)) expect(distToCenter(t, x, y)).toBeGreaterThanOrEqual(t.center.rx * 2.2 - 1);
     }

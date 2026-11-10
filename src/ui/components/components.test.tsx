@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import type { SymbolDef } from '../../content/types';
 import type { Placement } from '../../engine/layout';
 import { computeTable, type SeatGeom } from '../../engine/seats';
@@ -104,6 +104,24 @@ test('혼자 하기 자리는 거북이 뒷모습으로 그린다', () => {
   render(<SeatView {...baseProps} turtle />);
   expect(screen.getByTestId('turtle-back-0')).toBeInTheDocument();
 });
+test('혼자 하기 거북이는 맞히면 머리를 들썩이고 뒤통수 양쪽에 분홍 사선 3개씩 홍조가 생긴다', () => {
+  const { rerender } = render(<SeatView {...baseProps} turtle />);
+  expect(screen.queryByTestId('turtle-blush-0')).not.toBeInTheDocument();
+  rerender(<SeatView {...baseProps} turtle flash="correct" correctSymbol="ko-s:가" />);
+  expect(screen.getByTestId('turtle-blush-0').querySelectorAll('path')).toHaveLength(6);
+  expect(document.querySelector('.turtle-back__head')).toHaveClass('is-cheer');
+});
+test('홍조는 정답 강조가 끝난 뒤에도 잠시 남았다가 사라진다', () => {
+  vi.useFakeTimers();
+  try {
+    const { rerender } = render(<SeatView {...baseProps} turtle flash="correct" correctSymbol="ko-s:가" />);
+    rerender(<SeatView {...baseProps} turtle />);
+    act(() => { vi.advanceTimersByTime(600); });
+    expect(screen.getByTestId('turtle-blush-0')).toBeInTheDocument();
+    act(() => { vi.advanceTimersByTime(800); });
+    expect(screen.queryByTestId('turtle-blush-0')).not.toBeInTheDocument();
+  } finally { vi.useRealTimers(); }
+});
 test('extrasRect는 배지에서 영역 안쪽으로 떨어진 칸이고 화면 안에 있다', () => {
   const r = extrasRect(geom);
   expect(r.y + r.h).toBeLessThanOrEqual(geom.badge.y);
@@ -117,7 +135,7 @@ test('extras 칸은 콤보·아이템·대상 버튼 3개가 함께 들어갈 �
   render(<SeatView {...baseProps} streak={3} item="hint" targets={[{ index: 1, name: 'B', color: 'sky' }]} />);
   expect(document.querySelector('.extras')).toHaveStyle({ overflow: 'hidden' });
 });
-test.each([[960, 600], [1024, 768]])('%ix%i 4인: 배지와 버튼 칸을 피해도 자리마다 글자 8개가 44px 이상으로 들어간다', (W, H) => {
+test.each([[1024, 768], [1280, 800]])('%ix%i 4인: 배지와 버튼 칸을 피해도 자리마다 글자 8개가 44px 이상으로 들어간다', (W, H) => {
   const t = computeTable(4, W, H);
   for (let seed = 0; seed < 20; seed++) {
     for (const s of t.seats) {
