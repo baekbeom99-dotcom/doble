@@ -1,7 +1,7 @@
 import type { SetConfig, SymbolDef } from '../content/types';
 import type { SeatColor } from './seats';
 
-export type ModeId = 'soloSurvival' | 'score' | 'tower' | 'bomb' | 'coop';
+export type ModeId = 'soloSurvival' | 'soloStage' | 'score' | 'tower' | 'bomb' | 'coop';
 export type ItemId = 'freeze' | 'swirl' | 'hint' | 'shield' | 'timeStop' | 'double';
 export type Grade = 'perfect' | 'great' | 'good';
 
@@ -29,6 +29,8 @@ export interface GameConfig {
   /** 플레이어별 팀 번호(0 또는 1). 팀전이 아니면 null */
   teams: number[] | null;
   bomb: BombConfig;
+  /** 스테이지 도전의 단계 (1~20) */
+  stage?: number;
 }
 
 export interface PlayerState {

@@ -5,6 +5,7 @@ import { updateStreaks } from './modifiers/combo';
 import { correctValue } from './modifiers/finalRound';
 import { maybeGrantItem, useItem } from './modifiers/items';
 import { chooseTarget } from './modes/bomb';
+import { stageParams } from './modes/soloStage';
 import { createRng } from './rng';
 import {
   LOCK_MS,
@@ -27,6 +28,8 @@ export interface RoundOptions {
   preferIds?: string[];
   /** 카드당 심볼 수를 이만큼 늘린다 (협동 단계) */
   sizeBonus?: number;
+  /** 플레이어별 카드당 심볼 수를 이 값으로 정한다 (스테이지 도전) */
+  cardSizes?: number[];
 }
 
 export function makeRound(config: GameConfig, pool: string[], index: number, opts: RoundOptions = {}): RoundState {
@@ -35,7 +38,7 @@ export function makeRound(config: GameConfig, pool: string[], index: number, opt
   const prefer = opts.preferIds && opts.preferIds.length > 0 ? new Set(opts.preferIds) : null;
   const r = generateRound({
     pool,
-    playerSizes: config.players.map(p => (bonus > 0 ? Math.max(p.cardSize, Math.min(limit, p.cardSize + bonus)) : p.cardSize)),
+    playerSizes: opts.cardSizes ?? config.players.map(p => (bonus > 0 ? Math.max(p.cardSize, Math.min(limit, p.cardSize + bonus)) : p.cardSize)),
     preferAnswer: prefer ? id => prefer.has(id) : undefined,
     rng: createRng(config.seed + index * ROUND_SEED_STEP),
   });
@@ -48,7 +51,11 @@ const BLANK_PLAYER: PlayerState = { score: 0, lockedUntil: 0, streak: 0, item: n
 const bareSymbol = (id: string): SymbolDef => ({ id, display: { kind: 'text', value: id }, speech: id, lang: 'ko-KR', tags: {} });
 
 /** 협동이면 미션 대상과 단계별 심볼 수를 반영한다 */
-export function roundOptions(s: Pick<GameState, 'coop'>): RoundOptions {
+export function roundOptions(s: Pick<GameState, 'coop' | 'config' | 'pool'>): RoundOptions {
+  if (s.config.mode === 'soloStage') {
+    const size = stageParams(s.config.stage ?? 1, s.pool.length).cardSize;
+    return { cardSizes: s.config.players.map(() => size) };
+  }
   if (!s.coop) return {};
   return { preferIds: s.coop.mission.done ? undefined : s.coop.mission.ids, sizeBonus: s.coop.stage - 1 };
 }
@@ -62,7 +69,7 @@ export function createGame(config: GameConfig, pool: string[], modes: ModeTable,
     now: 0,
     phase: 'playing',
     players: config.players.map((_, i) => ({ ...BLANK_PLAYER, ...mode.initPlayer?.(config, i) })),
-    round: makeRound(config, pool, 0, roundOptions({ coop })),
+    round: makeRound(config, pool, 0, roundOptions({ coop, config, pool })),
     mode: mode.init(config),
     coop,
   };
