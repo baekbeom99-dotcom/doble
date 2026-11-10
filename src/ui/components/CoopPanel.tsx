@@ -1,24 +1,23 @@
-import { RESCUE_NEED } from '../../engine/coop/fire';
 import type { CoopState } from '../../engine/state';
 
 interface Props {
   coop: CoopState;
-  /** 플레이어 이름 (불 맞은 사람 표시용) */
-  names: string[];
   /** 지금 일어난 일을 알려 주는 문구 (없으면 null) */
   message: string | null;
-  /** 정보 칸이 화면 위쪽에 있으면 문구를 칸 아래에 띄운다 */
-  bannerBelow?: boolean;
+  /** 혼자 하는 몬스터 사냥: 좁은 칸에 맞춰 체력 막대를 아랫줄로 내린다 */
+  solo?: boolean;
+  /** 문구 띠를 칸에서 이만큼 더 띄운다 (칸 위의 불 게이지를 가리지 않게) */
+  bannerLift?: number;
 }
 
-const seconds = (ms: number) => Math.max(0, Math.ceil(ms / 1000));
 const pct = (v: number, max: number) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
 
-export function CoopPanel({ coop, names, message, bannerBelow = false }: Props) {
-  const { stage, hearts, hp, maxHp, attackLeft, attackTotal, mission, fire } = coop;
+/** 협동 정보 칸: 단계, 거북이 체력, 하트, 미션. 불 게이지는 칸 밖의 FireGauge가 그린다 */
+export function CoopPanel({ coop, message, solo = false, bannerLift = 0 }: Props) {
+  const { stage, hearts, hp, maxHp, mission } = coop;
   return (
-    <div className="coop">
-      {message && <div className={bannerBelow ? 'coop__banner coop__banner--below' : 'coop__banner'} role="status">{message}</div>}
+    <div className={solo ? 'coop coop--solo' : 'coop'}>
+      {message && <div className="coop__banner" role="status" style={bannerLift ? { marginBottom: 16 + bannerLift } : undefined}>{message}</div>}
       <div className="coop__head">
         <span className="coop__stage">{stage}단계</span>
         <span className="meter meter--hp" aria-label={`거북이 체력 ${hp}/${maxHp}`}>
@@ -29,20 +28,6 @@ export function CoopPanel({ coop, names, message, bannerBelow = false }: Props) 
           {'🤍'.repeat(Math.max(0, 3 - hearts))}
         </span>
       </div>
-
-      {fire ? (
-        <div className="coop__fire">
-          <b>{`${names[fire.target]} 구하기 ${fire.got}/${RESCUE_NEED}`}</b>
-          <span className="coop__time">{seconds(fire.timeLeft)}초</span>
-        </div>
-      ) : (
-        <div className="coop__attack">
-          <span>불 공격까지</span>
-          <span className="meter meter--attack" aria-label={`불 공격까지 ${seconds(attackLeft)}초`}>
-            <i style={{ width: pct(attackLeft, attackTotal) }} />
-          </span>
-        </div>
-      )}
 
       {mission.text && (
         <div className="coop__mission">

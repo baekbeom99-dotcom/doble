@@ -10,11 +10,17 @@ export const SEAT_COLORS = {
 } as const;
 export type SeatColor = keyof typeof SEAT_COLORS;
 
-export interface SeatGeom { index: number; region: Region; facing: 0 | 180; badge: Rect }
+export interface SeatGeom {
+  index: number; region: Region; facing: 0 | 180; badge: Rect;
+  /** 콤보·아이템·대상 버튼 칸. 없으면 배지 옆 기본 자리를 쓴다 */
+  extras?: Rect;
+}
 export interface TableGeom {
   center: Ellipse;
   seats: SeatGeom[];
   hud: { rect: Rect; facing: 0 | 180 }[];
+  /** 협동 불 게이지 자리 (정보 칸 밖의 큰 막대). 협동이 아니면 비어 있다 */
+  gauges: { rect: Rect; facing: 0 | 180 }[];
   /** 게임 중 나가기 버튼 자리 */
   exit: Rect;
 }
@@ -59,11 +65,23 @@ export interface TableOptions {
   sky?: boolean;
   /** 협동: 중앙 카드(악당 거북이 등껍질)를 줄이고 거북이 몸이 들어갈 간격을 둔다 */
   coop?: boolean;
+  /** 정보 칸 크기를 화면 비율로 직접 정한다 (팀 대결·폭탄 돌리기처럼 줄 수가 다른 칸) */
+  hudBox?: { w: number; h: number };
 }
 
 const COOP_CENTER_RATIO = 0.17 * AREA_SCALE;
 /** 협동에서 자리 영역은 카드 반지름의 2.2배 밖에 둔다 (거북이 머리·다리) */
 const COOP_GAP_RATIO = 1.2;
+/** 협동 정보 칸: 불 게이지를 밖으로 빼서 낮아졌다 */
+const COOP_BOX = { w: 0.2, h: 0.11 };
+/** 협동 불 게이지의 높이와 정보 칸과의 간격 (화면 높이 대비) */
+const GAUGE_H = 0.055;
+const GAUGE_GAP = 0.012;
+
+/** 화면 중심으로 뒤집은 칸 (위쪽 사람 쪽) */
+function flipRect(r: Rect, W: number, H: number): Rect {
+  return { x: W - r.x - r.w, y: H - r.y - r.h, w: r.w, h: r.h };
+}
 
 /** 자리 영역(타원)이 정보 칸과 겹치지 않는지 (정보 칸의 격자 점 검사) */
 function clearOf(e: Ellipse, rects: Rect[]): boolean {
@@ -86,23 +104,86 @@ export function computeTable(playerCount: 1 | 2 | 3 | 4, W: number, H: number, o
   const center: Ellipse = { cx: W / 2, cy: H / 2, rx: R0, ry: R0 };
   const hudH = 0.075 * H;
   // 협동·혼자 하기 정보 칸: 줄 간격을 줄여 세로를 0.15H로 낮췄다
-  const box: HudBox = opts.tallHud ? { w: 0.2 * W, h: 0.15 * H } : { w: 0.16 * W, h: hudH };
+  const frac = opts.hudBox ?? (opts.coop ? COOP_BOX : opts.tallHud ? { w: 0.2, h: 0.15 } : { w: 0.16, h: 0.075 });
+  const box: HudBox = { w: frac.w * W, h: frac.h * H };
   const screen: Rect = { x: 0, y: 0, w: W, h: H };
   const minGap = gapRatio * R0;
+  const coop = !!opts.coop;
   const table = playerCount === 1
-    ? opts.sky ? skyTable(W, H, hudH, box, screen) : soloTable(W, H, hudH, box, screen, ratio, gapRatio)
+    ? opts.sky ? skyTable(W, H, hudH, box, screen)
+      : coop ? soloCoopTable(W, H, hudH, screen) : soloTable(W, H, hudH, box, screen, ratio, gapRatio)
     : playerCount === 2
-      ? halfCircleTable(2, W, H, center, hudH, box, screen, minGap)
-      : cornerTable(playerCount, W, H, center, hudH, box, screen, minGap);
-  return { ...table, exit: exitRect(playerCount, W, H) };
+      ? halfCircleTable(2, W, H, center, hudH, box, screen, minGap, coop)
+      : cornerTable(playerCount, W, H, center, hudH, box, screen, minGap, coop);
+  const exit = exitRect(playerCount, W, H, coop);
+  if (playerCount === 1) return { ...table, exit };
+  // 여럿이 할 때: 콤보·아이템 칸을 이름 곡선이 끝나는 곳 바로 옆(그 사람 기준 오른쪽)에 둔다
+  const avoid = [...table.hud.map(h => h.rect), ...table.gauges.map(g => g.rect), exit];
+  const arcs = table.seats.map(s => nameArc(s, W, H, avoid).points);
+  const c = table.center;
+  const hits = (r: Rect, o: Rect, pad: number) => r.x < o.x + o.w + pad && o.x < r.x + r.w + pad && r.y < o.y + o.h + pad && o.y < r.y + r.h + pad;
+  const clear = (r: Rect) => {
+    const nx = Math.max(r.x, Math.min(c.cx, r.x + r.w)), ny = Math.max(r.y, Math.min(c.cy, r.y + r.h));
+    if (Math.hypot(nx - c.cx, ny - c.cy) <= c.rx + EXTRAS_CENTER_PAD) return false;
+    if (avoid.some(o => hits(r, o, EXTRAS_GAP))) return false;
+    if (arcs.some(a => a.some(([px, py]) => px > r.x - 6 && px < r.x + r.w + 6 && py > r.y - 6 && py < r.y + r.h + 6))) return false;
+    for (let py = r.y; py <= r.y + r.h + 1e-6; py += r.h / 8) for (let px = r.x; px <= r.x + r.w + 1e-6; px += r.w / 24) {
+      if (table.seats.some(s => pointInRegion(px, py, s.region))) return false;
+    }
+    return true;
+  };
+  const seats = table.seats.map((s, i) => ({ ...s, extras: extrasBeside(s, arcs[i], W, H, hudH, clear) }));
+  return { ...table, seats, exit };
+}
+
+const EXTRAS_GAP = 8;
+const EXTRAS_BUTTONS = 3;
+/** 콤보 표시가 이름과 카드 그림에 바짝 붙지 않게 이름 끝에서 오른쪽으로 더 띄우는 거리 */
+const EXTRAS_SHIFT = 26;
+const EXTRAS_STEP = 6;
+/** 중앙 카드 테두리(20px)와 조금의 여유 */
+const EXTRAS_CENTER_PAD = 26;
+
+/**
+ * 이름 곡선 끝 바로 오른쪽, 영역 테두리 바깥에 놓는 콤보·아이템 칸.
+ * 첫 버튼 한 칸이 테두리 밖에 오도록 높이를 잡는다. 위 자리(180°)는 화면 중심으로 뒤집어 계산한다.
+ */
+function extrasBeside(seat: SeatGeom, arc: [number, number][], W: number, H: number, h: number, clear: (r: Rect) => boolean = () => true): Rect {
+  const flip = seat.facing === 180;
+  const e = seat.region.ellipse;
+  const cx = flip ? W - e.cx : e.cx, cy = flip ? H - e.cy : e.cy;
+  const end = arc[arc.length - 1];
+  const ex = flip ? W - end[0] : end[0];
+  const Rx = e.rx + NAME_OFFSET, Ry = e.ry + NAME_OFFSET;
+  const w = EXTRAS_BUTTONS * h;
+  const top = (px: number) => {
+    const d = (px - cx) / Rx;
+    return Math.abs(d) >= 1 ? cy : cy - Ry * Math.sqrt(1 - d * d);
+  };
+  /** x에서 x+span까지 테두리의 가장 높은 곳 */
+  const crest = (x: number, span: number) => (x < cx && cx < x + span ? cy - Ry : Math.min(top(x), top(x + span)));
+  const real = (x: number, y: number): Rect => (flip ? { x: W - x - w, y: H - y - h, w, h } : { x, y, w, h });
+  // 이름 끝에서 오른쪽으로 옮겨 가며 칸 전체가 비는 첫 자리를 찾는다
+  for (let x = ex + EXTRAS_GAP + EXTRAS_SHIFT; x <= W - 4 - w; x += EXTRAS_STEP) {
+    const y = crest(x, w) - EXTRAS_GAP - h;
+    if (y < 4) continue;
+    const r = real(x, y);
+    if (clear(r)) return r;
+  }
+  const x = Math.max(4, Math.min(ex + EXTRAS_GAP, W - 4 - w));
+  return real(x, Math.max(4, crest(x, h) - EXTRAS_GAP - h));
 }
 
 export const EXIT_W = 88;
 export const EXIT_H = 44;
 
-/** 나가기 버튼: 1인 오른쪽 위, 2인 왼쪽 가운데, 3~4인 위쪽 가운데 (자리 영역이 닿지 않는 곳) */
-function exitRect(n: number, W: number, H: number): Rect {
+/**
+ * 나가기 버튼: 1인 오른쪽 위, 2인 왼쪽 가운데, 3~4인 위쪽 가운데 (자리 영역이 닿지 않는 곳).
+ * 혼자 하는 몬스터 사냥은 거북이가 위쪽을 좌우로 다니므로 오른쪽 아래에 둔다
+ */
+function exitRect(n: number, W: number, H: number, coop = false): Rect {
   const m = 0.02 * Math.min(W, H);
+  if (n === 1 && coop) return { x: W - m - EXIT_W, y: H - m - EXIT_H, w: EXIT_W, h: EXIT_H };
   if (n === 1) return { x: W - m - EXIT_W, y: m, w: EXIT_W, h: EXIT_H };
   if (n === 2) return { x: m, y: H / 2 - EXIT_H / 2, w: EXIT_W, h: EXIT_H };
   return { x: W / 2 - EXIT_W / 2, y: m, w: EXIT_W, h: EXIT_H };
@@ -138,15 +219,10 @@ function skyTable(W: number, H: number, hudH: number, box: HudBox, screen: Rect)
   });
   const ry = rx;
   const ellipse: Ellipse = { cx: W / 2, cy: H, rx, ry };
-  const cos = Math.cos((20 * Math.PI) / 180), sin = Math.sin((20 * Math.PI) / 180);
-  const seat: SeatGeom = {
-    index: 0,
-    region: { ellipse, clip: screen },
-    facing: 0,
-    // 정보 칸이 왼쪽 아래에 있으니 배지는 오른쪽 테두리에 단다
-    badge: centeredRect(ellipse.cx + rx * cos, ellipse.cy - ry * sin, 0.11 * W, hudH),
-  };
-  return { center: skyArc(W, H, R, 0), seats: [seat], hud: [{ rect: hudRect, facing: 0 }] };
+  // 아이템·콤보 칸은 등껍질에서 떨어진 오른쪽 아래 구석에 둔다 (정보 칸은 왼쪽 아래)
+  const extras: Rect = { x: W - 0.02 * W - 3 * hudH, y: H - 0.02 * H - hudH, w: 3 * hudH, h: hudH };
+  const seat: SeatGeom = { index: 0, region: { ellipse, clip: screen }, facing: 0, badge: extras, extras };
+  return { center: skyArc(W, H, R, 0), seats: [seat], hud: [{ rect: hudRect, facing: 0 }], gauges: [] };
 }
 
 const SOLO_MARGIN = 0.03;
@@ -169,17 +245,48 @@ function soloTable(W: number, H: number, hudH: number, box: HudBox, screen: Rect
     badge: centeredRect(ellipse.cx - rx * cos, ellipse.cy - ry * sin, 0.11 * W, hudH),
   };
   const hud = [{ rect: { x: 0.02 * W, y: 0.02 * H, w: box.w, h: box.h }, facing: 0 as const }];
-  return { center, seats: [seat], hud };
+  return { center, seats: [seat], hud, gauges: [] };
 }
 
-function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number): Omit<TableGeom, 'exit'> {
+/**
+ * 혼자 하는 몬스터 사냥: 위에서부터 거북이, 화면을 가로지르는 불 게이지, 자리 반타원.
+ * 거북이는 머리·다리까지(반지름의 2.2배) 화면 위쪽과 게이지 사이에 다 들어가고 좌우로 옮겨 다닌다.
+ * 정보 칸은 왼쪽 아래, 나가기는 오른쪽 아래 구석이다.
+ */
+function soloCoopTable(W: number, H: number, hudH: number, screen: Rect): Omit<TableGeom, 'exit'> {
+  const rx = SOLO_RX * W, ry = SOLO_RY * H;
+  const ellipse: Ellipse = { cx: W / 2, cy: H, rx, ry };
+  const gh = 0.05 * H;
+  const gauge: Rect = { x: 0.04 * W, y: H - ry - 0.035 * H - gh, w: 0.92 * W, h: gh };
+  const margin = 0.015 * H;
+  const extent = 1 + COOP_GAP_RATIO;
+  const R0 = Math.min(COOP_CENTER_RATIO * Math.min(W, H), (gauge.y - 0.01 * H - margin) / (2 * extent));
+  const center: Ellipse = { cx: W / 2, cy: margin + extent * R0, rx: R0, ry: R0 };
+  const cos = Math.cos((20 * Math.PI) / 180), sin = Math.sin((20 * Math.PI) / 180);
+  const seat: SeatGeom = {
+    index: 0,
+    region: { ellipse, clip: screen },
+    facing: 0,
+    badge: centeredRect(ellipse.cx - rx * cos, ellipse.cy - ry * sin, 0.11 * W, hudH),
+  };
+  const hudRect: Rect = { x: 0.012 * W, y: H - 0.012 * H - 0.11 * H, w: 0.13 * W, h: 0.11 * H };
+  return { center, seats: [seat], hud: [{ rect: hudRect, facing: 0 }], gauges: [{ rect: gauge, facing: 0 }] };
+}
+
+function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number, coop = false): Omit<TableGeom, 'exit'> {
   const hudRects: Rect[] = [{ x: 0.02 * W, y: H - 0.02 * H - box.h, w: box.w, h: box.h }];
   if (n === 2) hudRects.push({ x: W - 0.02 * W - box.w, y: 0.02 * H, w: box.w, h: box.h });
+  // 협동: 불 게이지를 각자의 정보 칸 바로 위(그 사람 기준)에 크게 둔다
+  const gh = GAUGE_H * H;
+  const gauge0: Rect = { x: 0.02 * W, y: hudRects[0].y - GAUGE_GAP * H - gh, w: 0.28 * W, h: gh };
+  const gauges: TableGeom['gauges'] = !coop ? []
+    : n === 2 ? [{ rect: gauge0, facing: 0 }, { rect: flipRect(gauge0, W, H), facing: 180 }] : [{ rect: gauge0, facing: 0 }];
+  const blocked = [...hudRects, ...gauges.map(g => g.rect)];
   const gapOf = (r: number) => Math.hypot(W - 0.94 * r - center.cx, H - center.cy) - r - center.rx;
   const r = shrinkUntil(0.4 * AREA_SCALE * H, v =>
     gapOf(v) >= minGap &&
-    clearOf({ cx: W - 0.94 * v, cy: H, rx: v, ry: v }, hudRects) &&
-    (n === 1 || clearOf({ cx: 0.94 * v, cy: 0, rx: v, ry: v }, hudRects)));
+    clearOf({ cx: W - 0.94 * v, cy: H, rx: v, ry: v }, blocked) &&
+    (n === 1 || clearOf({ cx: 0.94 * v, cy: 0, rx: v, ry: v }, blocked)));
 
   const bw = 0.11 * W;
   const cos = Math.cos((20 * Math.PI) / 180), sin = Math.sin((20 * Math.PI) / 180);
@@ -202,7 +309,7 @@ function halfCircleTable(n: 1 | 2, W: number, H: number, center: Ellipse, hudH: 
     });
     hud.push({ rect: hudRects[1], facing: 180 });
   }
-  return { center, seats, hud };
+  return { center, seats, hud, gauges };
 }
 
 /** 자리 순서: 0 왼쪽 아래, 1 오른쪽 아래, 2 오른쪽 위, 3 왼쪽 위. 3인은 0, 1, 3 위치를 쓴다 */
@@ -213,15 +320,20 @@ const CORNERS = [
   { left: true, bottom: false },
 ];
 
-function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number): Omit<TableGeom, 'exit'> {
-  const y = H / 2 - box.h / 2;
-  const hudRects: Rect[] = [{ x: 0.02 * W, y, w: box.w, h: box.h }, { x: W - 0.02 * W - box.w, y, w: box.w, h: box.h }];
+function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: number, box: HudBox, screen: Rect, minGap: number, coop = false): Omit<TableGeom, 'exit'> {
+  // 협동: 정보 칸 아래(그 사람 기준)에 불 게이지를 붙여 한 묶음으로 가운데에 둔다
+  const gh = coop ? GAUGE_H * H : 0, gap = coop ? GAUGE_GAP * H : 0;
+  const left: Rect = { x: 0.02 * W, y: H / 2 - (box.h + gap + gh) / 2, w: box.w, h: box.h };
+  const gauge0: Rect = { x: left.x, y: left.y + box.h + gap, w: 0.22 * W, h: gh };
+  const gauges: TableGeom['gauges'] = coop ? [{ rect: gauge0, facing: 0 }, { rect: flipRect(gauge0, W, H), facing: 180 }] : [];
+  const hudRects: Rect[] = [left, flipRect(left, W, H)];
+  const blocked = [...hudRects, ...gauges.map(g => g.rect)];
   // 가로·세로 반지름을 같은 비율(scale)로 줄인다. 대칭이라 왼쪽 위 타원으로 검사한다
   const fits = (scale: number) => {
     const rx = 0.3 * W * scale, ry = 0.29 * H * scale;
     if ((4 * rx) / 3 > W / 2 - 4 || (4 * ry) / 3 > H / 2 - 4) return false;
     const e = { cx: rx / 3, cy: ry / 3, rx, ry };
-    return ellipseGap(e, center.cx, center.cy) - center.rx >= minGap && clearOf(e, hudRects);
+    return ellipseGap(e, center.cx, center.cy) - center.rx >= minGap && clearOf(e, blocked);
   };
   const scale = shrinkUntil(AREA_SCALE, fits);
   const rx = 0.3 * W * scale, ry = 0.29 * H * scale;
@@ -243,7 +355,7 @@ function cornerTable(n: 3 | 4, W: number, H: number, center: Ellipse, hudH: numb
     { rect: hudRects[0], facing: 0 },
     { rect: hudRects[1], facing: 180 },
   ];
-  return { center, seats, hud };
+  return { center, seats, hud, gauges };
 }
 
 /** 중앙 카드 바닥 띠의 높이 (지름 대비) */

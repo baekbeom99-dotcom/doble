@@ -1,7 +1,7 @@
 import type { Ellipse } from '../../engine/geometry';
 
 /**
- * 협동의 악당 거북이: 가시 돋친 등껍질, 갈고리 부리, 머리 위 불꽃 볏을 가진 늑대거북 악당 (위에서 본 모습).
+ * 협동의 악당 거북이: 가시 돋친 등껍질, 치켜뜬 큰 눈과 송곳니, 머리 위 불꽃 볏을 가진 악당 (위에서 본 모습).
  * 중앙 카드가 등껍질 가운데이고, 좌표는 카드 반지름을 1로 둔 값이다. heading(도) 쪽으로 머리가 향한다 (0 = 오른쪽).
  */
 /** 단계마다 바뀌는 등껍질 색 [가시 바깥, 가시 안쪽, 테두리] */
@@ -15,7 +15,8 @@ const SHELLS = [
 const SKIN = '#c8622f';
 const SKIN_DARK = '#9e4422';
 const BELLY = '#e8b34a';
-const BEAK = '#f0c86a';
+const FANG = '#fff6e0';
+const EYE_WHITE = '#fff3c9';
 const MOUTH = '#8e2a1f';
 const CLAW = '#f3e6c4';
 const SPOT = '#5a2a16';
@@ -25,7 +26,8 @@ export const TURTLE_EXTENT = 2.2;
 /** 입 (불이 나오는 곳), 카드 반지름 배수 */
 export const TURTLE_MOUTH = 2.02;
 
-export type TurtleMood = 'idle' | 'angry' | 'hurt';
+/** down: 물리쳐서 쓰러지는 중, enter: 다음 단계 거북이가 나오는 중 */
+export type TurtleMood = 'idle' | 'angry' | 'hurt' | 'down' | 'enter';
 
 interface Props {
   stage: number;
@@ -49,7 +51,16 @@ export function VillainTurtle({ stage, circle, heading, mood }: Props) {
   const [spikeDark, spikeMid, rim] = SHELLS[(stage - 1) % SHELLS.length];
   const size = 2 * TURTLE_EXTENT * circle.rx;
   const legs = [45, -45, 135, -135];
-  const open = mood === 'angry' ? 0.2 : 0.09;
+  const iris = mood === 'angry' ? '#ff7a2e' : '#f2b422';
+  // 눈 하나 (위쪽 눈 기준 좌표). 눈꺼풀이 비스듬히 덮은 반달꼴이라 화난 눈매가 된다
+  const eye = (
+    <g className="villain__eye">
+      <path d="M1.40 -0.42 L1.76 -0.13 C1.92 -0.28 1.66 -0.56 1.40 -0.42 Z" fill={EYE_WHITE} stroke={EYE_RIM} strokeWidth="0.035" strokeLinejoin="round" />
+      <circle cx="1.67" cy="-0.325" r="0.075" fill={iris} />
+      <ellipse cx="1.67" cy="-0.325" rx="0.022" ry="0.062" fill="#2a1a12" transform="rotate(-50 1.67 -0.325)" />
+      <circle cx="1.7" cy="-0.36" r="0.02" fill="#fff" />
+    </g>
+  );
   return (
     <div
       className={`villain villain--${mood}`}
@@ -63,52 +74,55 @@ export function VillainTurtle({ stage, circle, heading, mood }: Props) {
         role="img"
         aria-label={`${stage}단계 악당 거북이`}
       >
-        {/* 가시 꼬리 */}
-        <path d="M-1.15 -0.13 L-1.62 -0.02 L-1.62 0.02 L-1.15 0.13 Z" fill={SKIN_DARK} />
-        <path d="M-1.25 -0.06 L-1.32 -0.16 L-1.37 -0.05 L-1.45 -0.13 L-1.5 -0.03 Z" fill={spikeDark} />
+        {/* 가시 꼬리: 좌우로 살랑인다 */}
+        <g className="villain__tail">
+          <path d="M-1.15 -0.13 L-1.62 -0.02 L-1.62 0.02 L-1.15 0.13 Z" fill={SKIN_DARK} />
+          <path d="M-1.25 -0.06 L-1.32 -0.16 L-1.37 -0.05 L-1.45 -0.13 L-1.5 -0.03 Z" fill={spikeDark} />
+        </g>
 
-        {/* 굵은 다리와 발톱, 짙은 반점 */}
-        {legs.map(a => {
+        {/* 굵은 다리와 발톱: 번갈아 가며 꿈틀거린다 */}
+        {legs.map((a, i) => {
           const r = (a * Math.PI) / 180;
           return (
             <g key={a} transform={`translate(${(1.12 * Math.cos(r)).toFixed(3)} ${(1.12 * Math.sin(r)).toFixed(3)}) rotate(${a})`}>
-              <ellipse cx="0.1" cy="0" rx="0.36" ry="0.24" fill={SKIN_DARK} />
-              <ellipse cx="0.08" cy="0" rx="0.32" ry="0.2" fill={SKIN} />
-              <circle cx="0.02" cy="-0.07" r="0.035" fill={SPOT} />
-              <circle cx="0.12" cy="0.06" r="0.03" fill={SPOT} />
-              <path d="M0.36 -0.13 L0.48 -0.1 L0.38 -0.06 M0.39 -0.02 L0.52 0 L0.39 0.03 M0.36 0.08 L0.48 0.11 L0.37 0.13" fill={CLAW} />
+              <g className="villain__leg" style={{ animationDelay: `${-i * 0.45}s` }}>
+                <ellipse cx="0.1" cy="0" rx="0.36" ry="0.24" fill={SKIN_DARK} />
+                <ellipse cx="0.08" cy="0" rx="0.32" ry="0.2" fill={SKIN} />
+                <path d="M0.36 -0.13 L0.48 -0.1 L0.38 -0.06 M0.39 -0.02 L0.52 0 L0.39 0.03 M0.36 0.08 L0.48 0.11 L0.37 0.13" fill={CLAW} />
+              </g>
             </g>
           );
         })}
 
-        {/* 머리: 굵은 목, 앞으로 갈수록 좁아지는 큰 얼굴, 한 덩어리 입, 앞쪽 부리 끝 */}
+        {/* 머리: 굵은 목, 둥글고 넓적한 얼굴, 밝은 주둥이, 송곳니 두 개가 보이는 입 */}
         <g className="villain__head">
-          <ellipse cx="1.12" cy="0" rx="0.34" ry="0.36" fill={SKIN_DARK} />
-          <path d="M1.05 -0.46 Q1.6 -0.52 1.92 -0.24 Q2.12 0 1.92 0.24 Q1.6 0.52 1.05 0.46 Z" fill={SKIN_DARK} />
-          <path d="M1.1 -0.41 Q1.6 -0.46 1.88 -0.21 Q2.06 0 1.88 0.21 Q1.6 0.46 1.1 0.41 Z" fill={BELLY} />
-          <circle cx="1.3" cy="-0.3" r="0.035" fill={SPOT} />
-          <circle cx="1.22" cy="0.27" r="0.03" fill={SPOT} />
-          <circle cx="1.42" cy="0.34" r="0.025" fill={SPOT} />
-          {/* 입: 가운데가 갈라지지 않은 한 줄의 굽은 입. 화나면 크게 벌린다 */}
-          {mood === 'angry'
-            ? <path d="M1.78 -0.26 Q2.06 0 1.78 0.26 Q1.9 0 1.78 -0.26 Z" fill={MOUTH} />
-            : <path d="M1.8 -0.22 Q2.0 0 1.8 0.22" stroke={MOUTH} strokeWidth="0.05" fill="none" strokeLinecap="round" />}
-          {/* 부리 끝: 앞쪽 가운데 하나 */}
-          <path d="M1.99 -0.09 Q2.18 0 1.99 0.09 Q2.04 0 1.99 -0.09 Z" fill={BEAK} />
-          {mood === 'hurt' ? (
-            <g stroke="#3a2e2a" strokeWidth="0.06" strokeLinecap="round">
-              <path d="M1.46 -0.3 L1.6 -0.16 M1.6 -0.3 L1.46 -0.16" />
-              <path d="M1.46 0.16 L1.6 0.3 M1.6 0.16 L1.46 0.3" />
+          <ellipse cx="1.12" cy="0" rx="0.34" ry="0.34" fill={SKIN_DARK} />
+          <path d="M1.06 -0.44 Q1.5 -0.68 1.88 -0.4 Q2.16 -0.16 2.16 0 Q2.16 0.16 1.88 0.4 Q1.5 0.68 1.06 0.44 Z" fill={SKIN_DARK} />
+          <path d="M1.1 -0.4 Q1.5 -0.62 1.85 -0.36 Q2.1 -0.15 2.1 0 Q2.1 0.15 1.85 0.36 Q1.5 0.62 1.1 0.4 Z" fill={SKIN} />
+          <ellipse cx="1.9" cy="0" rx="0.19" ry="0.29" fill={BELLY} />
+          <circle cx="1.84" cy="-0.06" r="0.022" fill={SPOT} />
+          <circle cx="1.84" cy="0.06" r="0.022" fill={SPOT} />
+          {/* 입: 평소에는 씩 웃는 한 줄, 화나면 크게 벌린다. 송곳니는 앞을 향한다 */}
+          {mood === 'angry' ? (
+            <g>
+              <path d="M1.88 -0.27 Q2.16 0 1.88 0.27 Q1.99 0 1.88 -0.27 Z" fill={MOUTH} />
+              <path d="M1.93 -0.21 L2.07 -0.13 L1.96 -0.1 Z M1.93 0.21 L2.07 0.13 L1.96 0.1 Z" fill={FANG} />
             </g>
           ) : (
             <g>
-              {/* 매서운 눈: 뒤쪽 바깥에서 입 쪽 안으로 모이는 대각선 아몬드꼴 (눈썹 없음) */}
-              <path d="M1.34 -0.37 Q1.6 -0.36 1.78 -0.12 Q1.56 -0.18 1.36 -0.25 Z" fill={EYE_RIM} />
-              <path d="M1.38 -0.34 Q1.6 -0.33 1.73 -0.15 Q1.56 -0.2 1.4 -0.27 Z" fill={mood === 'angry' ? '#ffb347' : '#ffd84a'} />
-              <circle cx="1.58" cy="-0.25" r="0.035" fill="#2a1a12" />
-              <path d="M1.34 0.37 Q1.6 0.36 1.78 0.12 Q1.56 0.18 1.36 0.25 Z" fill={EYE_RIM} />
-              <path d="M1.38 0.34 Q1.6 0.33 1.73 0.15 Q1.56 0.2 1.4 0.27 Z" fill={mood === 'angry' ? '#ffb347' : '#ffd84a'} />
-              <circle cx="1.58" cy="0.25" r="0.035" fill="#2a1a12" />
+              <path d="M1.9 -0.25 Q2.1 0 1.9 0.25" stroke={MOUTH} strokeWidth="0.045" fill="none" strokeLinecap="round" />
+              <path d="M1.95 -0.17 L2.05 -0.12 L1.98 -0.08 Z M1.95 0.17 L2.05 0.12 L1.98 0.08 Z" fill={FANG} />
+            </g>
+          )}
+          {mood === 'hurt' ? (
+            <g stroke="#3a2e2a" strokeWidth="0.06" strokeLinecap="round">
+              <path d="M1.55 -0.39 L1.71 -0.23 M1.71 -0.39 L1.55 -0.23" />
+              <path d="M1.55 0.23 L1.71 0.39 M1.71 0.23 L1.55 0.39" />
+            </g>
+          ) : (
+            <g>
+              {eye}
+              <g transform="scale(1 -1)">{eye}</g>
             </g>
           )}
           {/* 머리 위 불꽃 볏: 뒤로 날린다 */}

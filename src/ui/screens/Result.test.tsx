@@ -21,10 +21,6 @@ test('점수제는 점으로 보여준다', () => {
   show(withScores(createGame(testConfig(), TEST_POOL, MODES), [3, 5]));
   expect(screen.getByText('5점')).toBeInTheDocument();
 });
-test('탑 쌓기는 층으로 보여준다', () => {
-  show(withScores(createGame(testConfig({ mode: 'tower' }), TEST_POOL, MODES), [3, 5]));
-  expect(screen.getByText('탑 5층')).toBeInTheDocument();
-});
 test('폭탄 돌리기는 장으로 보여주고 가장 많이 든 사람에게 폭탄 표시', () => {
   show(withScores(createGame(testConfig({ mode: 'bomb' }), TEST_POOL, MODES), [0, 4]));
   expect(screen.getByText('4장')).toBeInTheDocument();

@@ -1,19 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { INITIALS } from '../../content/hangul';
 import { createSymbolSet, maxCardSize, MAX_CARD_SIZE, MIN_CARD_SIZE } from '../../content/registry';
 import type { SetConfig, SymbolDef } from '../../content/types';
+import { SURVIVAL_DEFAULT_S } from '../../engine/modes/soloSurvival';
 import { SEAT_COLORS, type SeatColor } from '../../engine/seats';
 import { EMPTY_RECORDS, type Records } from '../../services/records';
 import { ALL_RULES, NO_RULES, type BombConfig, type GameConfig, type ModeId, type Rules } from '../../engine/state';
 
 export type SetupKind = 'solo' | 'versus' | 'team' | 'coop';
-type Method = Extract<ModeId, 'score' | 'tower' | 'bomb'>;
+type Method = Extract<ModeId, 'score' | 'bomb'>;
 
 const TITLES: Record<SetupKind, string> = { solo: '혼자 하기', versus: '같이 하기', team: '팀 대결', coop: '협동' };
 const COUNTS: Record<SetupKind, number[]> = { solo: [1], versus: [2, 3, 4], team: [3, 4], coop: [1, 2, 3, 4] };
 const DEFAULT_COUNT: Record<SetupKind, number> = { solo: 1, versus: 2, team: 4, coop: 2 };
 const COLOR_NAMES: Record<SeatColor, string> = { pink: '핑크', sky: '하늘', yellow: '노랑', lime: '연두', purple: '보라' };
-const METHOD_NAMES: Record<Method, string> = { score: '점수제', tower: '탑 쌓기', bomb: '폭탄 돌리기' };
+const METHOD_NAMES: Record<Method, string> = { score: '점수제', bomb: '폭탄 돌리기' };
 const RULE_NAMES: Record<keyof Rules, string> = { combo: '콤보', finalRound: '막판 3배', items: '아이템' };
 const DEFAULT_COLORS: SeatColor[] = ['pink', 'sky', 'yellow', 'lime'];
 const DEFAULT_CARD_SIZE = 5;
@@ -21,10 +22,20 @@ const DEFAULT_CARD_SIZE = 5;
 const LONE_HANDICAP = 2;
 const ROUND_OPTIONS = [10, 20, 30];
 const HAND_OPTIONS = [3, 5, 7];
+/** 서바이벌 제한 시간 (초) */
+const TIME_OPTIONS = [20, 40, 60];
 const CASE_LABELS = { upper: '대문자', lower: '소문자', mixed: '대소문자' } as const;
 
 type SetKind = SetConfig['kind'];
 type LetterCase = keyof typeof CASE_LABELS;
+
+/** 설정 화면 확대 비율: 고를 것이 적은 화면일수록 요소를 키워 빈 곳을 줄인다 */
+export function setupScale(kind: SetupKind, count: number, bomb: boolean): number {
+  if (kind === 'solo') return 1.3;
+  if (kind === 'coop') return [1.3, 1.25, 1.12, 1][count - 1];
+  if (bomb || count === 4) return 1;
+  return count === 2 ? 1.12 : 1.05;
+}
 
 const NAME_MAX = 10;
 /** 이름 입력칸 너비(em): 한글 등 넓은 글자는 1em, 나머지는 0.6em으로 어림하고 여유를 더한다 */
@@ -75,6 +86,7 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
   const solo = kind === 'solo';
   const [soloMethod, setSoloMethod] = useState<SoloMethod>('survival');
   const [stagePick, setStagePick] = useState<number | null>(null);
+  const [timeLimit, setTimeLimit] = useState(SURVIVAL_DEFAULT_S);
   const coopKind = kind === 'coop';
   // 대결 방식·덧붙는 요소·라운드 수는 같이 하기와 팀 대결에만 있다
   const versusLike = kind === 'versus' || kind === 'team';
@@ -86,6 +98,7 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
   const [setKind, setSetKind] = useState<SetKind>('syllable');
   const [includeDouble, setIncludeDouble] = useState(false);
   const [initial, setInitial] = useState('ㄱ');
+  const [pickingInitial, setPickingInitial] = useState(false);
   const [batchim, setBatchim] = useState(false);
   const [letterCase, setLetterCase] = useState<LetterCase>('upper');
   const [method, setMethod] = useState<Method>('score');
@@ -132,6 +145,7 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
   const unlocked = records.unlocked[createSymbolSet(setConfig).id] ?? 1;
   const stage = Math.min(stagePick ?? unlocked, unlocked);
   const stageMode = solo && soloMethod === 'stage';
+  const survivalMode = solo && soloMethod === 'survival';
 
   const start = async () => {
     // 빠르게 두 번 눌러도 한 번만 시작한다
@@ -157,13 +171,13 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
       seed: Date.now(),
       rules: versusLike ? rules : solo && soloMethod !== 'hunt' ? SOLO_RULES : NO_RULES,
       ...(stageMode ? { stage } : {}),
+      ...(survivalMode ? { timeLimit } : {}),
       teams: team ? teamsFor(count) : null,
       bomb,
     }, syms);
   };
 
   const teams = team ? teamsFor(count) : null;
-  const roundsLabel = method === 'tower' ? '카드 수' : '라운드 수';
 
   const startButton = symbols && max === 0
     ? <p className="note">이 세트는 심볼이 너무 적어요</p>
@@ -171,7 +185,7 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
 
   // 스크롤 없이 한 화면: 위 막대(처음으로·제목·시작) + 왼쪽(사람) / 오른쪽(규칙) 두 칸
   return (
-    <main className="setup">
+    <main className="setup" style={{ '--setup-scale': setupScale(kind, count, versusLike && method === 'bomb') } as CSSProperties}>
       <header className="setup__bar">
         <button className="btn setup__back" onClick={onBack}>처음으로</button>
         <h1 className="setup__title">{TITLES[kind]}</h1>
@@ -186,6 +200,14 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
               {(Object.keys(SOLO_METHODS) as SoloMethod[]).map(m => (
                 <Radio key={m} name="solo-method" label={SOLO_METHODS[m]} checked={soloMethod === m} onChange={() => setSoloMethod(m)} />
               ))}
+              {survivalMode && (
+                <fieldset className="toggles setup__line" aria-label="제한 시간">
+                  <span className="setup__label">제한 시간</span>
+                  {TIME_OPTIONS.map(n => (
+                    <Radio key={n} name="time-limit" label={`${n}초`} checked={timeLimit === n} onChange={() => setTimeLimit(n)} />
+                  ))}
+                </fieldset>
+              )}
               {stageMode && (
                 <fieldset className="toggles setup__line" aria-label="단계">
                   <span className="setup__label">단계</span>
@@ -252,15 +274,15 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
           <fieldset className="field" aria-label="세트">
             <legend>글자</legend>
             <Radio name="kind" label="자음" checked={setKind === 'consonant'} onChange={() => setSetKind('consonant')} />
-            <Radio name="kind" label="글자" checked={setKind === 'syllable'} onChange={() => setSetKind('syllable')} />
+            <Radio name="kind" label="글자" checked={setKind === 'syllable'} onChange={() => { setSetKind('syllable'); setPickingInitial(true); }} />
             <Radio name="kind" label="알파벳" checked={setKind === 'alphabet'} onChange={() => setSetKind('alphabet')} />
             <div className="sub">
               {setKind === 'consonant' && <Check label="쌍자음 포함" checked={includeDouble} onChange={setIncludeDouble} />}
               {setKind === 'syllable' && (
                 <>
-                  <fieldset className="toggles" aria-label="초성">
-                    {INITIALS.map(c => <Radio key={c} name="initial" label={c} checked={initial === c} onChange={() => setInitial(c)} />)}
-                  </fieldset>
+                  <button type="button" className="chip setup__initial" aria-label="초성 고르기" onClick={() => setPickingInitial(true)}>
+                    초성 <b>{initial}</b> <span aria-hidden="true">바꾸기</span>
+                  </button>
                   <Check label="받침 있는 글자" checked={batchim} onChange={setBatchim} />
                 </>
               )}
@@ -277,12 +299,13 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
               {(Object.keys(METHOD_NAMES) as Method[]).map(m => (
                 <Radio key={m} name="method" label={METHOD_NAMES[m]} checked={method === m} onChange={() => setMethod(m)} />
               ))}
-              <fieldset className="toggles setup__line" aria-label={roundsLabel}>
-                <span className="setup__label">{roundsLabel}</span>
+              <fieldset className="toggles setup__line" aria-label="라운드 수">
+                <span className="setup__label">라운드 수</span>
                 {ROUND_OPTIONS.map(n => <Radio key={n} name="rounds" label={`${n}`} checked={rounds === n} onChange={() => setRounds(n)} />)}
               </fieldset>
               {method === 'bomb' && (
                 <>
+                  <p className="note setup__note">맞히면 내 카드를 친구에게 넘겨요. 카드가 먼저 0장이 되면 이겨요.</p>
                   <fieldset className="toggles setup__line" aria-label="시작 카드">
                     <span className="setup__label">시작 카드</span>
                     {HAND_OPTIONS.map(n => (
@@ -320,6 +343,22 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
           </fieldset>
         </section>
       </div>
+
+      {pickingInitial && setKind === 'syllable' && (
+        <div className="dialog-backdrop" onClick={() => setPickingInitial(false)}>
+          <div className="dialog setup__picker" role="dialog" aria-modal="true" aria-label="초성 고르기" onClick={e => e.stopPropagation()}>
+            <h2>어떤 글자로 할까요?</h2>
+            <fieldset className="toggles" aria-label="초성">
+              {INITIALS.map(c => (
+                <Radio key={c} name="initial" label={c} checked={initial === c} onChange={() => { setInitial(c); setPickingInitial(false); }} />
+              ))}
+            </fieldset>
+            <div className="actions">
+              <button type="button" className="btn" onClick={() => setPickingInitial(false)}>닫기</button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -50,7 +50,7 @@ test('정답 직후 이전 카드가 보이는 동안의 터치는 새 라운드
 });
 test('서바이벌에서는 공용 정보 칸에 남은 초를 짧게 보여준다', () => {
   render(<Game config={{ ...duoCfg, mode: 'soloSurvival', players: [duoCfg.players[0]] }} symbols={symbols} onOver={() => {}} />);
-  expect(screen.getByText('30초')).toBeInTheDocument();
+  expect(screen.getByText('40초')).toBeInTheDocument();
 });
 test('작은 화면에서 4명·8개·심볼 회전이어도 게임 화면이 그려진다', () => {
   window.innerWidth = 960; window.innerHeight = 600;
@@ -100,6 +100,22 @@ test('폭탄 대상 고르기 버튼이 맞힌 사람 자리에 뜨고, 누르�
   expect(within(screen.getByTestId('seat-0')).queryByRole('button', { name: 'C에게' })).not.toBeInTheDocument();
   expect(screen.getByTestId('score-2')).toHaveTextContent('4');
 });
+test('폭탄 돌리기: 정보 칸에 규칙을 적고, 맞히면 카드가 받는 사람에게 날아간다', () => {
+  const cfg = testConfig({ mode: 'bomb', bomb: { startHand: 3, target: 'random' } });
+  render(<Game config={cfg} symbols={symbols} onOver={() => {}} />);
+  expect(screen.getAllByText(/맞히면 카드를 넘겨요/)).toHaveLength(2);
+  expect(screen.getByTestId('cards-0')).toHaveTextContent('▮▮▮');
+  expect(screen.queryByTestId('give-card')).not.toBeInTheDocument();
+  tapSeat(0, createGame(cfg, pool, MODES).round.answers[0]);
+  expect(screen.getAllByTestId('give-card').length).toBeGreaterThan(0);
+  expect(screen.getByTestId('cards-0')).toHaveTextContent('▮▮');
+});
+test('협동: 불 게이지를 정보 칸 밖에 양쪽으로 크게 보여준다', () => {
+  const players = ['pink', 'sky', 'yellow', 'lime'].map((c, i) => ({ name: `P${i}`, color: c as 'pink', cardSize: 5 }));
+  render(<Game config={testConfig({ mode: 'coop', players })} symbols={symbols} onOver={() => {}} />);
+  expect(screen.getAllByTestId('fire-gauge')).toHaveLength(2);
+  expect(screen.getAllByLabelText(/불 공격까지 \d+초/)).toHaveLength(2);
+});
 test('팀전 정보 칸에 팀 합계를 보여준다', () => {
   const players = ['pink', 'sky', 'yellow', 'lime'].map((c, i) => ({ name: `P${i}`, color: c as 'pink', cardSize: 5 }));
   render(<Game config={testConfig({ players, teams: [0, 0, 1, 1] })} symbols={symbols} onOver={() => {}} />);
@@ -120,7 +136,7 @@ test('게임 화면을 떠나면 남은 타이머를 모두 정리한다', () =>
     vi.useRealTimers();
   }
 });
-test('서바이벌: 정답 강조를 보여주는 동안에는 시간이 줄지 않아 +1초가 그대로 남는다', () => {
+test('서바이벌: 정답 강조를 보여주는 동안에는 시간이 줄지 않아 +5초가 그대로 남는다', () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance', 'Date'] });
   try {
     const cfg = testConfig({ mode: 'soloSurvival', players: [testConfig().players[0]] });
@@ -128,9 +144,9 @@ test('서바이벌: 정답 강조를 보여주는 동안에는 시간이 줄지 
     act(() => { vi.advanceTimersByTime(16); });
     tapSeat(0, createGame(cfg, pool, MODES).round.answers[0]);
     act(() => { vi.advanceTimersByTime(1000); });
-    expect(screen.getAllByText('31초').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('45초').length).toBeGreaterThan(0);
     act(() => { vi.advanceTimersByTime(1000); });
-    expect(screen.getAllByText('30초').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('44초').length).toBeGreaterThan(0);
   } finally {
     vi.useRealTimers();
   }
@@ -237,10 +253,10 @@ test('나가기 확인 창이 떠 있는 동안 게임 시간이 흐르지 않�
     render(<Game config={{ ...duoCfg, mode: 'soloSurvival', players: [duoCfg.players[0]] }} symbols={symbols} onOver={() => {}} onExit={() => {}} />);
     fireEvent.click(screen.getByRole('button', { name: '나가기' }));
     act(() => { vi.advanceTimersByTime(5000); });
-    expect(screen.getByText('30초')).toBeInTheDocument();
+    expect(screen.getByText('40초')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: '계속하기' }));
     act(() => { vi.advanceTimersByTime(2100); });
-    expect(screen.queryByText('30초')).not.toBeInTheDocument();
+    expect(screen.queryByText('40초')).not.toBeInTheDocument();
   } finally { vi.useRealTimers(); }
 });
 test('정답을 맞히면 화면 가장자리가 맞힌 사람 색으로 반짝인다', () => {

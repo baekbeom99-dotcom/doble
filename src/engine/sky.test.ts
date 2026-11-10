@@ -15,6 +15,10 @@ describe('skyPhase', () => {
     expect(skyPhase(2 * SKY_STEPS - 1)).toEqual({ body: 'moon', t: 1 });
     expect(skyPhase(2 * SKY_STEPS)).toEqual({ body: 'sun', t: 0 });
   });
+  test('한 번 맞힐 때마다 길의 1/6씩 가고, 세 번째에 위 가운데에 온다', () => {
+    expect(skyPhase(1).t).toBeCloseTo(1 / 6);
+    expect(skyPhase(3).t).toBeCloseTo(0.5);
+  });
 });
 
 describe('skyPalette', () => {

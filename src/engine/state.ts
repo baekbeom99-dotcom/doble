@@ -1,7 +1,7 @@
 import type { SetConfig, SymbolDef } from '../content/types';
 import type { SeatColor } from './seats';
 
-export type ModeId = 'soloSurvival' | 'soloStage' | 'score' | 'tower' | 'bomb' | 'coop';
+export type ModeId = 'soloSurvival' | 'soloStage' | 'score' | 'bomb' | 'coop';
 export type ItemId = 'freeze' | 'swirl' | 'hint' | 'shield' | 'timeStop' | 'double';
 export type Grade = 'perfect' | 'great' | 'good';
 
@@ -22,7 +22,7 @@ export interface GameConfig {
   rotationStep: 0 | 90 | 180;
   symbolRotation: boolean;
   speech: boolean;
-  /** 라운드 수 (점수제·폭탄), 카드 수 (탑 쌓기). 기본 20 */
+  /** 라운드 수 (점수제·폭탄). 기본 20 */
   scoreRounds: number;
   seed: number;
   rules: Rules;
@@ -31,10 +31,12 @@ export interface GameConfig {
   bomb: BombConfig;
   /** 스테이지 도전의 단계 (1~20) */
   stage?: number;
+  /** 서바이벌 제한 시간 (초). 기본 40 */
+  timeLimit?: number;
 }
 
 export interface PlayerState {
-  /** 점수제: 점수, 탑 쌓기: 탑 높이, 폭탄 돌리기: 손에 든 장수 */
+  /** 점수제: 점수, 폭탄 돌리기: 손에 든 장수 */
   score: number;
   lockedUntil: number;
   /** 이 사람이 연속으로 맞힌 횟수 */
@@ -46,7 +48,7 @@ export interface PlayerState {
   hintRound: number;
 }
 
-export type RewardId = 'heal' | 'bonus' | 'special';
+export type RewardId = 'heal' | 'special';
 
 export interface Mission {
   text: string;

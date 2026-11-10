@@ -2,7 +2,7 @@ import type { Ellipse } from './geometry';
 import type { TableGeom } from './seats';
 
 /** 해(또는 달)가 왼쪽 중간에서 오른쪽 중간까지 가는 데 걸리는 정답 수 */
-export const SKY_STEPS = 12;
+export const SKY_STEPS = 7;
 /** 화면 가장자리와 해 사이 여백 (짧은 변 대비) */
 export const SKY_MARGIN = 0.03;
 

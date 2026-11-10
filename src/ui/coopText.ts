@@ -16,9 +16,8 @@ export function objectParticle(name: string): '을' | '를' {
 }
 
 const REWARD_TEXT: Record<RewardId, string> = {
-  heal: '하트가 하나 늘었어요',
-  bonus: '거북이에게 큰 피해를 줬어요',
-  special: '필살기로 거북이를 크게 때렸어요',
+  heal: '거북이를 크게 때리고 하트도 하나 얻었어요',
+  special: '거북이를 크게 때렸어요',
 };
 
 /** 협동에서 지금 일어난 일을 아이도 알 수 있게 한 문장으로 알려 준다. 알릴 일이 아니면 null */
@@ -27,7 +26,7 @@ export function coopMessage(e: GameEvent, names: string[]): string | null {
     case 'fireStart':
       return names.length > 1
         ? `악당 거북이가 ${names[e.target]}에게 불을 뿜었어요! 친구들이 ${RESCUE_NEED}번 맞히면 구할 수 있어요`
-        : `악당 거북이가 불을 뿜었어요! ${FIRE_MS / 1000}초 동안 누를 수 없어요`;
+        : `악당 거북이가 불을 뿜었어요! ${FIRE_MS / 1000}초 동안 방어해요`;
     case 'fireRescue':
       return `${names[e.target]}${objectParticle(names[e.target])} 구했어요!`;
     case 'fireBurn':

@@ -130,6 +130,10 @@ test('extrasRect는 배지에서 영역 안쪽으로 떨어진 칸이고 화면 
   const top = extrasRect({ ...geom, facing: 180, badge: { x: 380, y: 60, w: 110, h: 56 } });
   expect(top.y).toBeGreaterThanOrEqual(60 + 56);
 });
+test('자리에 extras가 정해져 있으면 그 칸을 쓴다', () => {
+  const box = { x: 700, y: 400, w: 200, h: 56 };
+  expect(extrasRect({ ...geom, extras: box })).toEqual(box);
+});
 test('extras 칸은 콤보·아이템·대상 버튼 3개가 함께 들어갈 만큼 넓고, 넘치는 내용은 잘린다', () => {
   expect(extrasRect(geom).w).toBeGreaterThanOrEqual(geom.badge.h * 6);
   render(<SeatView {...baseProps} streak={3} item="hint" targets={[{ index: 1, name: 'B', color: 'sky' }]} />);

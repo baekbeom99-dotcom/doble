@@ -4,7 +4,6 @@ import { GameController } from '../../engine/controller';
 import { pointInRegion, type Ellipse } from '../../engine/geometry';
 import { layoutWithFallback, type Placement } from '../../engine/layout';
 import { MODES } from '../../engine/modes';
-import { SURVIVAL_START_MS } from '../../engine/modes/soloSurvival';
 import { createGame } from '../../engine/reducer';
 import { createRng } from '../../engine/rng';
 import { computeTable, floorBand, nameArc, SEAT_COLORS, type SeatGeom } from '../../engine/seats';
@@ -14,13 +13,15 @@ import { opponentsOf, teamTotals } from '../../engine/teams';
 import { speak } from '../../services/speech';
 import { CenterCard } from '../components/CenterCard';
 import { CoopPanel } from '../components/CoopPanel';
+import { FireGauge } from '../components/FireGauge';
+import { nextRoam, roamInterval } from '../../engine/coop/roam';
 import { coopMessage } from '../coopText';
 import { SoloHud } from '../components/SoloHud';
 import { Hud } from '../components/Hud';
 import { PatternBackdrop } from '../components/PatternBackdrop';
 import { SkyScene } from '../components/SkyScene';
 import { skyCenter, skyPhase } from '../../engine/sky';
-import { TURTLE_MOUTH, VillainTurtle, type TurtleMood } from '../components/VillainTurtle';
+import { TURTLE_EXTENT, TURTLE_MOUTH, VillainTurtle, type TurtleMood } from '../components/VillainTurtle';
 import { extrasRect, SeatView } from '../components/SeatView';
 
 const FLASH_MS = 400;
@@ -34,6 +35,15 @@ const GRADE_MS = 800;
 /** 정답 때 화면 가장자리가 반짝이는 시간 */
 const EDGE_MS = 600;
 const HURT_MS = 450;
+/** 거북이를 물리친 뒤 새 거북이가 자리 잡을 때까지 쉬어 가는 시간. 앞 절반은 쓰러지고 뒤 절반은 새로 나온다 */
+const DEFEAT_MS = 3000;
+/** 폭탄 돌리기: 넘긴 카드가 날아가는 시간 (.give-card 애니메이션 + 장마다 늦추는 시간) */
+const GIVE_MS = 1300;
+const GIVE_STAGGER_MS = 90;
+const GIVE_MAX = 5;
+/** 물리친 순간 사방으로 튀는 종이 조각 */
+const SPARKS = 24;
+const SPARK_COLORS = ['#f5c542', '#e0602e', '#fbe08a', '#8fb86a', '#6fb6d9', '#e58fb0'];
 const SEAT_SEED_STEP = 101;
 const CENTER_SEAT = 99;
 
@@ -49,6 +59,9 @@ interface Props {
 
 /** 정답 직후 잠깐 이전 라운드를 보여주며 정답 글자를 강조한다 */
 interface Freeze { round: RoundState; player: number; symbol: string }
+/** 물리친 거북이가 쓰러지고(down) 다음 거북이가 나오는(enter) 연출 */
+interface Defeat { stage: number; phase: 'down' | 'enter' }
+interface Give { key: number; from: number; to: number; count: number }
 
 /** 중앙에서 자리 쪽으로 가다가 처음 자리 영역에 닿는 점 (불이 닿는 곳) */
 function hitPoint(center: Ellipse, seat: SeatGeom): { x: number; y: number } {
@@ -138,6 +151,12 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
   const freezeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [hits, setHits] = useState<Map<number, string>>(new Map());
+  const [defeat, setDefeat] = useState<Defeat | null>(null);
+  // 연출 중의 터치를 막는다 (state는 다음 그리기까지 늦으므로 ref로도 둔다)
+  const defeatRef = useRef(false);
+  // 혼자 하는 몬스터 사냥에서 거북이가 서 있는 가로 칸 (-1 ~ 1)
+  const [roam, setRoam] = useState(0);
+  const [gives, setGives] = useState<Give[]>([]);
   const hitTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // 화면을 떠날 때 정답 강조 타이머를 정리한다
@@ -166,6 +185,12 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
         if (e.type === 'wrong') {
           setWrongFlash(prev => new Set(prev).add(e.player));
           timers.push(setTimeout(() => setWrongFlash(prev => { const n = new Set(prev); n.delete(e.player); return n; }), FLASH_MS));
+        }
+        // 폭탄 돌리기: 넘긴 카드가 받는 사람에게 날아간다
+        if (e.type === 'give') {
+          const give: Give = { key: performance.now() + Math.random(), from: e.from, to: e.to, count: e.count };
+          setGives(prev => [...prev, give]);
+          timers.push(setTimeout(() => setGives(prev => prev.filter(g => g !== give)), GIVE_MS));
         }
         // 혼자 하기 판정을 잠깐 보여준다
         if (e.type === 'grade') {
@@ -211,11 +236,32 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
     return () => clearInterval(id);
   }, [isCoop]);
 
+  // 혼자 하는 몬스터 사냥: 세 번째 거북이부터 가끔 자리를 옮긴다. 불을 뿜거나 쓰러지는 동안에는 멈춘다
+  const soloCoop = isCoop && config.players.length === 1;
+  const stage = state.coop?.stage ?? 0;
+  const roamPaused = !!state.coop?.fire || !!defeat || confirmExit;
+  useEffect(() => { setRoam(0); }, [stage]);
+  useEffect(() => {
+    const every = soloCoop ? roamInterval(stage) : null;
+    if (every === null || roamPaused) return;
+    const id = setInterval(() => setRoam(r => nextRoam(r)), every);
+    return () => clearInterval(id);
+  }, [soloCoop, stage, roamPaused]);
+
   const { W, H } = useViewport();
   const isSolo = config.mode === 'soloSurvival' || config.mode === 'soloStage';
+  const isBomb = config.mode === 'bomb';
+  const isTeam = !!config.teams;
+  // 대결 정보 칸: 팀 점수 아래에 진행 줄, 폭탄 돌리기는 규칙 두 줄이 더 들어가는 만큼만 잡는다
+  const hudBox = useMemo(
+    () => (isCoop || isSolo ? undefined
+      : isBomb ? { w: 0.17, h: isTeam ? 0.15 : 0.115 }
+      : isTeam ? { w: 0.13, h: 0.1 } : undefined),
+    [isCoop, isSolo, isBomb, isTeam],
+  );
   const table = useMemo(
-    () => computeTable(config.players.length as 1 | 2 | 3 | 4, W, H, { tallHud: isCoop || isSolo, sky: isSolo, coop: isCoop }),
-    [config.players.length, W, H, isCoop, isSolo],
+    () => computeTable(config.players.length as 1 | 2 | 3 | 4, W, H, { tallHud: isCoop || isSolo, sky: isSolo, coop: isCoop, hudBox }),
+    [config.players.length, W, H, isCoop, isSolo, hudBox],
   );
   const round = freeze?.round ?? state.round;
   // 혼자 하기: 정답 수만큼 해(달)가 움직인다. 정답 강조 중에는 이전 자리에 둔다
@@ -244,15 +290,28 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
   }, [round, table, centerCircle, config.seed, config.symbolRotation, needExtras]);
 
   const tap = (player: number, symbol: string) => {
+    // 거북이가 쓰러지고 새 거북이가 나오는 동안에는 쉬어 간다
+    if (defeatRef.current) return;
     const before = controller.getState();
     // 화면에 보이는 라운드 번호로 보낸다. 이전 카드가 보이는 동안의 터치는 엔진이 무시한다
     const events = controller.dispatch({ type: 'TAP', player, symbol, round: round.index });
+    const downed = events.some(e => e.type === 'monsterDown');
+    if (downed) {
+      const fallen = before.coop!.stage;
+      defeatRef.current = true;
+      setDefeat({ stage: fallen, phase: 'down' });
+      hitTimers.current.push(
+        setTimeout(() => setDefeat({ stage: fallen, phase: 'enter' }), DEFEAT_MS / 2),
+        setTimeout(() => { defeatRef.current = false; setDefeat(null); }, DEFEAT_MS),
+      );
+    }
     if (events.some(e => e.type === 'round')) {
       setFreeze({ round: before.round, player, symbol });
-      // 정답 강조를 보여주는 동안 게임 시간을 멈춘다 (서바이벌 +1초가 줄지 않게)
-      controller.hold(FLASH_MS);
+      // 정답 강조를 보여주는 동안 게임 시간을 멈춘다 (서바이벌 +1초가 줄지 않게). 거북이를 물리치면 연출이 끝날 때까지 멈춘다
+      controller.hold(downed ? DEFEAT_MS : FLASH_MS);
       if (freezeTimer.current) clearTimeout(freezeTimer.current);
-      freezeTimer.current = setTimeout(() => { freezeTimer.current = null; setFreeze(null); }, FLASH_MS);
+      // 물리친 카드는 거북이가 쓰러지는 동안 그대로 두고, 새 거북이와 함께 새 카드를 보여 준다
+      freezeTimer.current = setTimeout(() => { freezeTimer.current = null; setFreeze(null); }, downed ? DEFEAT_MS / 2 : FLASH_MS);
     } else if (events.some(e => e.type === 'correct')) {
       // 라운드가 그대로인 정답(협동에서 먼저 맞힌 사람)도 노란 정답 강조를 잠깐 보여준다
       setHits(prev => new Map(prev).set(player, symbol));
@@ -264,55 +323,69 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
     }
   };
 
-  const solo = config.mode === 'soloSurvival';
   const coop = state.coop;
   const burning = (i: number) => coop?.fire?.target === i;
   // 협동: 이번 라운드에 이미 맞힌 자리는 흐리게
   const dimSeat = (i: number) => !!coop && coop.answered[i] && !burning(i);
   const namePaths = useMemo(
-    () => table.seats.map(seat => nameArc(seat, W, H, [...table.hud.map(h => h.rect), table.exit]).d),
+    () => table.seats.map(seat => nameArc(seat, W, H, [...table.hud.map(h => h.rect), ...table.gauges.map(g => g.rect), table.exit]).d),
     [table, W, H],
   );
   const totals = teamTotals(state);
   const lastRound = rules.finalRound && state.round.index === config.scoreRounds - 1;
   const pending = pendingChoice(state);
-  const hudContent = solo ? (
-    <>
-      <span>{Math.max(0, Math.ceil(state.mode.timeLeft / 1000))}초</span>
-      <span className="hud__bar"><i style={{ width: `${Math.min(100, (state.mode.timeLeft / SURVIVAL_START_MS) * 100)}%` }} /></span>
-    </>
-  ) : (
-    <>
+  // 팀 점수가 윗줄, 진행(스테이지)이 아랫줄. 폭탄 돌리기는 규칙을 맨 아래에 적는다
+  const hudContent = (
+    <div className="hud__col">
       {totals && <span className="hud__teams">{`A ${totals[0]} : ${totals[1]} B`}</span>}
-      <span>{Math.min(state.round.index + 1, config.scoreRounds)}/{config.scoreRounds}</span>
-      {config.mode === 'bomb' && <span aria-hidden="true">💣</span>}
-      {lastRound && <span className="hud__final">×3</span>}
-      {!totals && <span className="hud__bar"><i style={{ width: `${(state.round.index / config.scoreRounds) * 100}%` }} /></span>}
-    </>
+      <span className="hud__row">
+        <span>{Math.min(state.round.index + 1, config.scoreRounds)}/{config.scoreRounds}</span>
+        {isBomb && <span aria-hidden="true">💣</span>}
+        {lastRound && <span className="hud__final">×3</span>}
+        {!totals && <span className="hud__bar"><i style={{ width: `${(state.round.index / config.scoreRounds) * 100}%` }} /></span>}
+      </span>
+      {isBomb && <span className="hud__rule">맞히면 카드를 넘겨요<br />먼저 0장이면 이겨요</span>}
+    </div>
   );
 
   const openExit = () => { controller.stop(); setConfirmExit(true); };
   const resume = () => { setConfirmExit(false); controller.start(); };
   const leave = () => { controller.stop(); onExit?.(); };
-  const mood: TurtleMood = hurt ? 'hurt' : coop?.fire ? 'angry' : 'idle';
+  const mood: TurtleMood = defeat ? defeat.phase : hurt ? 'hurt' : coop?.fire ? 'angry' : 'idle';
+  // 거북이가 옆으로 옮겨 가면 등껍질 카드와 글자도 함께 옮긴다. 머리까지 화면 안에 남는 만큼만 간다
+  const roamDx = soloCoop ? roam * Math.max(0, W / 2 - TURTLE_EXTENT * table.center.rx - 8) : 0;
+  const turtleCircle = roamDx ? { ...table.center, cx: table.center.cx + roamDx } : table.center;
+  const cardCircle = isCoop ? turtleCircle : centerCircle;
+  const centerPlacements = roamDx ? layouts.center.map(p => ({ ...p, x: p.x + roamDx })) : layouts.center;
   // 불을 뿜을 때는 맞는 사람 쪽을 본다
-  const fireTo = coop?.fire ? hitPoint(table.center, table.seats[coop.fire.target]) : null;
+  const fireTo = coop?.fire ? hitPoint(turtleCircle, table.seats[coop.fire.target]) : null;
   const showBeam = !!fireTo && aimed === fireKey;
-  const heading = fireTo ? (Math.atan2(fireTo.y - table.center.cy, fireTo.x - table.center.cx) * 180) / Math.PI : look;
+  const heading = fireTo ? (Math.atan2(fireTo.y - turtleCircle.cy, fireTo.x - turtleCircle.cx) * 180) / Math.PI : look;
   const mouth = {
-    x: table.center.cx + TURTLE_MOUTH * table.center.rx * Math.cos((heading * Math.PI) / 180),
-    y: table.center.cy + TURTLE_MOUTH * table.center.rx * Math.sin((heading * Math.PI) / 180),
+    x: turtleCircle.cx + TURTLE_MOUTH * turtleCircle.rx * Math.cos((heading * Math.PI) / 180),
+    y: turtleCircle.cy + TURTLE_MOUTH * turtleCircle.rx * Math.sin((heading * Math.PI) / 180),
   };
+  const names = config.players.map(p => p.name);
+  /** 정보 칸 위에 불 게이지가 있으면 문구 띠를 그 위로 올린다 */
+  const bannerLift = (i: number) => {
+    const h = table.hud[i], g = table.gauges[i];
+    if (!g) return 0;
+    return Math.max(0, h.facing === 0 ? h.rect.y - g.rect.y : g.rect.y + g.rect.h - (h.rect.y + h.rect.h));
+  };
+  const tableClass = ['table', isSolo && state.now < (state.mode.feverUntil ?? 0) && 'is-fever', defeat && `is-defeat-${defeat.phase}`]
+    .filter(Boolean).join(' ');
 
   return (
-    <div className={isSolo && state.now < (state.mode.feverUntil ?? 0) ? "table is-fever" : "table"}>
+    <div className={tableClass}>
       {phase ? <SkyScene phase={phase} circle={centerCircle} /> : <PatternBackdrop index={hitCount} />}
-      {coop && <VillainTurtle stage={coop.stage} circle={table.center} heading={heading} mood={mood} />}
+      {coop && (
+        <VillainTurtle stage={defeat?.phase === 'down' ? defeat.stage : coop.stage} circle={turtleCircle} heading={heading} mood={mood} />
+      )}
       <CenterCard
         key={phase?.body ?? 'card'}
-        circle={centerCircle}
+        circle={cardCircle}
         variant={phase?.body ?? (isCoop ? 'shell' : undefined)}
-        symbols={round.center.map(id => byId.get(id)!)} placements={layouts.center} rotation={round.rotation} />
+        symbols={round.center.map(id => byId.get(id)!)} placements={centerPlacements} rotation={round.rotation} />
       {table.seats.map((seat, i) => (
         <SeatView
           key={i}
@@ -343,12 +416,16 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
           onPickTarget={target => controller.dispatch({ type: 'CHOOSE_TARGET', player: i, target })}
           dim={dimSeat(i)}
           hideScore={isCoop}
+          cards={isBomb ? state.players[i].score : undefined}
         />
+      ))}
+      {coop && table.gauges.map((g, i) => (
+        <FireGauge key={i} coop={coop} names={names} rect={g.rect} facing={g.facing} solo={soloCoop} />
       ))}
       {table.hud.map((h, i) => (
         <Hud key={i} rect={h.rect} facing={h.facing} tall={isCoop}>
           {coop ? (
-            <CoopPanel coop={coop} names={config.players.map(p => p.name)} message={message} bannerBelow={h.facing === 0 && h.rect.y + h.rect.h / 2 < H / 2} />
+            <CoopPanel coop={coop} message={message} solo={soloCoop} bannerLift={bannerLift(i)} />
           ) : isSolo ? (
             <SoloHud mode={state.mode} kind={config.mode as 'soloSurvival' | 'soloStage'} now={state.now} best={best} lastGrade={lastGrade} />
           ) : (
@@ -357,6 +434,44 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
         </Hud>
       ))}
       {showBeam && fireTo && <FireBeam from={mouth} to={fireTo} r={table.center.rx} />}
+      {defeat && coop && (
+        <div
+          key={defeat.phase}
+          className={`defeat defeat--${defeat.phase}`}
+          data-testid="defeat"
+          aria-hidden="true"
+          style={{ left: turtleCircle.cx, top: turtleCircle.cy, '--r': `${turtleCircle.rx}px` } as CSSProperties}
+        >
+          <span className="defeat__flash" />
+          <span className="defeat__ring" />
+          <span className="defeat__ring defeat__ring--late" />
+          {Array.from({ length: SPARKS }, (_, k) => (
+            <i
+              key={k}
+              style={{
+                '--a': `${(360 / SPARKS) * k + (k % 2) * 7}deg`, '--d': 2.2 + (k % 3) * 0.7,
+                background: SPARK_COLORS[k % SPARK_COLORS.length], animationDelay: `${(k % 4) * 70}ms`,
+              } as CSSProperties}
+            />
+          ))}
+          <b className="defeat__text">{defeat.phase === 'down' ? '물리쳤다!' : `${coop.stage}단계 거북이 등장!`}</b>
+        </div>
+      )}
+      {gives.map(g => {
+        const a = table.seats[g.from].badge, b = table.seats[g.to].badge;
+        const ax = a.x + a.w / 2, ay = a.y + a.h / 2;
+        return Array.from({ length: Math.min(g.count, GIVE_MAX) }, (_, k) => (
+          <i
+            key={`${g.key}-${k}`}
+            className="give-card"
+            data-testid="give-card"
+            style={{
+              left: ax, top: ay, '--dx': `${b.x + b.w / 2 - ax}px`, '--dy': `${b.y + b.h / 2 - ay}px`,
+              animationDelay: `${k * GIVE_STAGGER_MS}ms`,
+            } as CSSProperties}
+          />
+        ));
+      })}
       {edge && (
         <div
           key={edge.key}

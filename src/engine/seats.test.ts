@@ -187,6 +187,54 @@ describe('nameArc', () => {
   });
 });
 
+describe('콤보·아이템 칸 (seat.extras)', () => {
+  test.each([...VIEWPORTS, [960, 880], [880, 960]] as [number, number][])('%ix%i 2~4인: 칸 전체가 어느 자리·중앙 카드 테두리·정보 칸·나가기와도 겹치지 않는다', (W, H) => {
+    for (const n of [2, 3, 4] as const) {
+      const t = computeTable(n, W, H);
+      for (const s of t.seats) {
+        const x = s.extras!;
+        expect(inside(W, H, x)).toBe(true);
+        expect(rectCircleDist(x, t)).toBeGreaterThan(t.center.rx + 20);
+        for (const r of [...t.hud.map(h => h.rect), t.exit]) expect(overlap(x, r)).toBe(false);
+        for (const o of t.seats) for (const [px, py] of gridPoints(x, 4)) expect(pointInRegion(px, py, o.region)).toBe(false);
+      }
+    }
+  });
+  test.each(VIEWPORTS)('%ix%i 2~4인: 이름 바로 오른쪽(그 사람 기준) 테두리 바깥에 있고 이름·정보 칸·나가기·중앙 카드와 겹치지 않는다', (W, H) => {
+    for (const n of [2, 3, 4] as const) {
+      const t = computeTable(n, W, H);
+      const avoid = [...t.hud.map(h => h.rect), t.exit];
+      const arcs = t.seats.map(s => nameArc(s, W, H, avoid));
+      t.seats.forEach((s, i) => {
+        const x = s.extras!;
+        expect(x).toBeDefined();
+        expect(inside(W, H, x)).toBe(true);
+        expect(x.w).toBeGreaterThanOrEqual(3 * x.h - 1e-6);
+        // 버튼 하나(정사각형)는 이름 끝 쪽에서 시작한다
+        const first: Rect = s.facing === 0 ? { x: x.x, y: x.y, w: x.h, h: x.h } : { x: x.x + x.w - x.h, y: x.y, w: x.h, h: x.h };
+        const end = arcs[i].points[arcs[i].points.length - 1];
+        if (s.facing === 0) expect(first.x).toBeGreaterThanOrEqual(end[0]);
+        else expect(first.x + first.w).toBeLessThanOrEqual(end[0]);
+        for (const [px, py] of gridPoints(first, 4)) expect(pointInRegion(px, py, s.region)).toBe(false);
+        expect(rectCircleDist(first, t)).toBeGreaterThan(t.center.rx);
+        for (const r of avoid) expect(overlap(first, r)).toBe(false);
+        for (const arc of arcs) for (const [px, py] of arc.points) {
+          expect(px > x.x - 4 && px < x.x + x.w + 4 && py > x.y - 4 && py < x.y + x.h + 4).toBe(false);
+        }
+      });
+    }
+  });
+  test.each(VIEWPORTS)('%ix%i 하늘 장면: 등껍질에서 떨어진 오른쪽 아래 구석에 둔다', (W, H) => {
+    const t = computeTable(1, W, H, { tallHud: true, sky: true });
+    const s = t.seats[0], x = s.extras!;
+    expect(inside(W, H, x)).toBe(true);
+    expect(x.x + x.w).toBeGreaterThan(W * 0.95);
+    expect(x.y + x.h).toBeGreaterThan(H * 0.95);
+    for (const [px, py] of gridPoints(x, 4)) expect(pointInRegion(px, py, s.region)).toBe(false);
+    expect(overlap(x, t.exit)).toBe(false);
+  });
+});
+
 describe.each(VIEWPORTS)('협동 배치 %ix%i', (W, H) => {
   test.each(COUNTS)('%i인: 중앙 카드는 0.17×0.8×min(W,H)이고 자리는 카드 반지름 2.2배 밖에 있다 (거북이 자리)', n => {
     const t = computeTable(n, W, H, { tallHud: true, coop: true });
@@ -202,4 +250,46 @@ describe.each(VIEWPORTS)('협동 배치 %ix%i', (W, H) => {
       expect(() => layoutSymbols({ region: s.region, exclusions: [s.badge], count: 7, rng: createRng(seed) })).not.toThrow();
     }
   });
+});
+
+describe.each(VIEWPORTS)('협동 불 게이지 %ix%i', (W, H) => {
+  test.each(COUNTS)('%i인: 게이지가 화면 안에서 자리·정보 칸·나가기·거북이와 겹치지 않는다', n => {
+    const t = computeTable(n, W, H, { tallHud: true, coop: true });
+    expect(t.gauges).toHaveLength(n === 1 ? 1 : 2);
+    for (const g of t.gauges) {
+      expect(inside(W, H, g.rect)).toBe(true);
+      expect(g.rect.w).toBeGreaterThanOrEqual((n === 1 ? 0.9 : 0.2) * W);
+      expect(rectCircleDist(g.rect, t)).toBeGreaterThanOrEqual(2.2 * t.center.rx - 1);
+      for (const [x, y] of gridPoints(g.rect, 4)) expect(t.seats.some(s => pointInRegion(x, y, s.region))).toBe(false);
+      for (const o of [...t.hud.map(h => h.rect), t.exit]) expect(overlap(g.rect, o)).toBe(false);
+    }
+    for (const r of [...t.hud.map(h => h.rect), t.exit]) {
+      expect(inside(W, H, r)).toBe(true);
+      for (const [x, y] of gridPoints(r, 4)) expect(t.seats.some(s => pointInRegion(x, y, s.region))).toBe(false);
+    }
+  });
+  test('1인: 거북이가 화면에서 잘리지 않고, 정보 칸과 나가기는 게이지 아래 구석에 있어 거북이가 좌우로 다닐 수 있다', () => {
+    const t = computeTable(1, W, H, { tallHud: true, coop: true });
+    const g = t.gauges[0].rect;
+    expect(t.center.cy - 2.2 * t.center.rx).toBeGreaterThanOrEqual(0);
+    expect(t.center.cy + 2.2 * t.center.rx).toBeLessThanOrEqual(g.y);
+    for (const r of [t.hud[0].rect, t.exit]) expect(r.y).toBeGreaterThan(g.y + g.h);
+    expect(overlap(t.hud[0].rect, t.exit)).toBe(false);
+  });
+  test('협동이 아니면 게이지가 없다', () => {
+    for (const n of COUNTS) expect(computeTable(n, W, H).gauges).toEqual([]);
+    expect(computeTable(1, W, H, { tallHud: true, sky: true }).gauges).toEqual([]);
+  });
+});
+
+test.each(VIEWPORTS)('%ix%i 정보 칸 크기를 화면 비율로 정할 수 있다 (hudBox)', (W, H) => {
+  for (const n of [2, 3, 4] as const) {
+    const t = computeTable(n, W, H, { hudBox: { w: 0.21, h: 0.13 } });
+    for (const h of t.hud) {
+      expect(h.rect.w).toBeCloseTo(0.21 * W);
+      expect(h.rect.h).toBeCloseTo(0.13 * H);
+      expect(inside(W, H, h.rect)).toBe(true);
+      for (const [x, y] of gridPoints(h.rect, 4)) expect(t.seats.some(s => pointInRegion(x, y, s.region))).toBe(false);
+    }
+  }
 });

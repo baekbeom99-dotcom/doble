@@ -39,6 +39,22 @@ test('1인은 매 정답이 합체 공격이다', () => {
   expect(r.state.coop!.hp).toBe(8 - 2);
   expect(r.state.round.index).toBe(1);
 });
+test('혼자 할 때는 맞힐 때마다 불 공격이 1500ms 늦춰진다 (처음 간격을 넘지는 않는다)', () => {
+  let s = createGame(solo(), TEST_POOL, MODES);
+  const total = s.coop!.attackTotal;
+  s = reduce(s, { type: 'TICK', dt: 4000 }, MODES).state;
+  s = tap(s, 0).state;
+  expect(s.coop!.attackLeft).toBe(total - 4000 + 1500);
+  s = tap(s, 0).state;
+  s = tap(s, 0).state;
+  expect(s.coop!.attackLeft).toBe(total);
+});
+test('여럿이 할 때는 맞혀도 불 공격이 늦춰지지 않는다', () => {
+  let s = createGame(coopCfg(), TEST_POOL, MODES);
+  s = reduce(s, { type: 'TICK', dt: 4000 }, MODES).state;
+  const left = s.coop!.attackLeft;
+  expect(tap(s, 0).state.coop!.attackLeft).toBe(left);
+});
 test('오답이면 공격 타이머가 1500ms 줄어든다', () => {
   const s = createGame(coopCfg(), TEST_POOL, MODES);
   const wrong = s.round.cards[0].find(id => id !== s.round.answers[0])!;

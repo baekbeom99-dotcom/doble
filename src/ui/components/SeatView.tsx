@@ -47,7 +47,12 @@ interface Props {
   burning?: boolean;
   /** 거북이 뒷모습으로 그린다 (혼자 하기) */
   turtle?: boolean;
+  /** 손에 든 카드 수 (폭탄 돌리기). 점수 뒤에 작은 카드 그림으로 보여 준다 */
+  cards?: number;
 }
+
+/** 카드 그림은 이만큼까지만 그리고, 넘으면 +를 붙인다 */
+const CARD_ICONS_MAX = 7;
 
 /** 페이퍼컷: 같은 색 종이를 진하기만 다르게 세 겹 겹친다. 그림자는 아래로 부드럽게 */
 export function regionStyle(color: string): CSSProperties {
@@ -60,6 +65,7 @@ export function regionStyle(color: string): CSSProperties {
 
 /** 콤보·아이템·대상 버튼이 놓이는 칸. 배지 자리에서 영역 안쪽(플레이어 반대쪽)으로 떨어뜨린다 */
 export function extrasRect(geom: SeatGeom): Rect {
+  if (geom.extras) return geom.extras;
   const b = geom.badge;
   const clip = geom.region.clip;
   const w = b.h * EXTRAS_WIDTH_PER_HEIGHT;
@@ -71,7 +77,7 @@ export function extrasRect(geom: SeatGeom): Rect {
 export function SeatView(props: Props) {
   const { index, geom, color, symbols, placements, score, name, showName, locked, flash, correctSymbol, onTap } = props;
   const { streak = 0, item = null, onUseItem, team = null, hintSymbol = null, spinning = false, targets = null, onPickTarget } = props;
-  const { dim = false, hideScore = false, namePath, burning = false, turtle = false } = props;
+  const { dim = false, hideScore = false, namePath, burning = false, turtle = false, cards } = props;
   const { cx, cy, rx, ry } = geom.region.ellipse;
   // 혼자 하기 거북이는 초록 등껍질로 칠한다
   const hex = turtle ? TURTLE_SHELL : SEAT_COLORS[color];
@@ -107,12 +113,17 @@ export function SeatView(props: Props) {
               {team !== null && ' '}
               {name}
               {!hideScore && <tspan className="seat-name__score" data-testid={`score-${index}`} dx="10">{score}</tspan>}
+              {cards !== undefined && cards > 0 && (
+                <tspan className="seat-name__cards" data-testid={`cards-${index}`} dx="6" aria-hidden="true">
+                  {'▮'.repeat(Math.min(cards, CARD_ICONS_MAX))}{cards > CARD_ICONS_MAX ? '+' : ''}
+                </tspan>
+              )}
             </textPath>
           </text>
         </svg>
       )}
       {showExtras && (
-        <div className="extras" style={{ left: ex.x, top: ex.y, width: ex.w, height: ex.h, transform: rotate, overflow: 'hidden' }}>
+        <div className="extras" style={{ left: ex.x, top: ex.y, width: ex.w, height: ex.h, transform: rotate, overflow: 'hidden', justifyContent: geom.extras ? (turtle ? 'flex-end' : 'flex-start') : undefined }}>
           {streak >= 2 && <span className="combo">콤보 {streak}</span>}
           {item && (
             <button

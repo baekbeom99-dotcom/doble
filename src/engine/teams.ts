@@ -15,7 +15,7 @@ export interface Standing {
   rank: number;
   label: string;
   players: number[];
-  /** 점수·탑 높이·장수 (팀이면 합계) */
+  /** 점수·장수 (팀이면 합계) */
   value: number;
   winner: boolean;
   /** 폭탄 돌리기에서 진 쪽 중 가장 많이 든 항목 */

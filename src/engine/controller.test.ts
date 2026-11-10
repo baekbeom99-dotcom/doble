@@ -13,7 +13,7 @@ test('frame 사이의 dt를 100ms로 제한한다', () => {
   const c = new GameController(createGame(soloCfg, pool, MODES), MODES);
   c.frame(1000); c.frame(1016); expect(c.getState().now).toBe(16);
   c.frame(9016); expect(c.getState().now).toBe(116);
-  expect(c.getState().mode.timeLeft).toBe(30000 - 116);
+  expect(c.getState().mode.timeLeft).toBe(40000 - 116);
 });
 test('subscribe는 dispatch 결과 이벤트를 받는다', () => {
   const c = new GameController(createGame(soloCfg, pool, MODES), MODES);

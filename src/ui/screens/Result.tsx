@@ -16,7 +16,7 @@ interface Props {
   onNextStage?: () => void;
 }
 
-const valueText = (mode: ModeId, n: number) => (mode === 'tower' ? `탑 ${n}층` : mode === 'bomb' ? `${n}장` : `${n}점`);
+const valueText = (mode: ModeId, n: number) => (mode === 'bomb' ? `${n}장` : `${n}점`);
 
 function SoloSummary({ state }: { state: GameState }) {
   const { mode, config } = state;

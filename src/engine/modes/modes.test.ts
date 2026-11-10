@@ -11,16 +11,19 @@ const soloCfg: GameConfig = { ...base, mode: 'soloSurvival', players: [{ name: '
 const duoCfg: GameConfig = { ...base, mode: 'score', players: [{ name: 'A', color: 'pink', cardSize: 5 }, { name: 'B', color: 'sky', cardSize: 5 }] };
 const wrongOf = (s: GameState, p: number) => s.round.cards[p].find(id => id !== s.round.answers[p])!;
 
-test('서바이벌: 30초로 시작하고 정답 +1초, 오답 −2초, 0이 되면 끝', () => {
+test('서바이벌: 40초로 시작하고 정답 +5초, 오답 −2초, 0이 되면 끝', () => {
   let s = createGame(soloCfg, pool, MODES);
-  expect(s.mode.timeLeft).toBe(30000);
+  expect(s.mode.timeLeft).toBe(40000);
   s = reduce(s, { type: 'TAP', player: 0, symbol: s.round.answers[0], round: 0 }, MODES).state;
-  expect(s.mode.timeLeft).toBe(31000);
+  expect(s.mode.timeLeft).toBe(45000);
   expect(s.mode.correct).toBe(1);
   s = reduce(s, { type: 'TAP', player: 0, symbol: wrongOf(s, 0), round: 1 }, MODES).state;
-  expect(s.mode.timeLeft).toBe(29000);
-  const r = reduce(s, { type: 'TICK', dt: 29000 }, MODES);
+  expect(s.mode.timeLeft).toBe(43000);
+  const r = reduce(s, { type: 'TICK', dt: 43000 }, MODES);
   expect(r.state.phase).toBe('over'); expect(r.events).toContainEqual({ type: 'over' });
+});
+test('서바이벌: 설정한 제한 시간으로 시작한다', () => {
+  expect(createGame({ ...soloCfg, timeLimit: 60 }, pool, MODES).mode.timeLeft).toBe(60000);
 });
 test('점수제: 먼저 맞힌 사람이 1점을 얻고, scoreRounds 라운드 뒤에 끝난다', () => {
   let s = createGame({ ...duoCfg, scoreRounds: 2 }, pool, MODES);
@@ -35,11 +38,3 @@ test('점수제: 시간이 흘러도 끝나지 않는다', () => {
   expect(reduce(s, { type: 'TICK', dt: 600000 }, MODES).state.phase).toBe('playing');
 });
 
-test('탑 쌓기: 맞히면 값만큼 탑이 높아지고 scoreRounds 뒤에 끝난다', () => {
-  let s = createGame(testConfig({ mode: 'tower', scoreRounds: 2, rules: { combo: false, finalRound: true, items: false } }), TEST_POOL, MODES);
-  s = reduce(s, { type: 'TAP', player: 0, symbol: s.round.answers[0], round: 0 }, MODES).state;
-  expect(s.players[0].score).toBe(1);
-  s = reduce(s, { type: 'TAP', player: 0, symbol: s.round.answers[0], round: 1 }, MODES).state;
-  expect(s.players[0].score).toBe(4);
-  expect(s.phase).toBe('over');
-});

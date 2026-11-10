@@ -3,6 +3,16 @@ import { makeMission, missionProgress } from '../coop/missions';
 import { applyDamage, freshMonster, HEARTS_START, setCoop, WRONG_PENALTY_MS } from '../coop/monster';
 import type { CoopState, GameEvent, GameState, Mode } from '../state';
 
+/** 혼자 할 때 맞힐 때마다 불 공격이 늦춰지는 시간 */
+export const SOLO_DELAY_MS = 1500;
+
+/** 혼자 하는 몬스터 사냥: 맞히면 불 공격을 늦춘다 (이번 공격 간격을 넘지는 않는다) */
+function delayAttack(before: GameState, after: GameState): GameState {
+  const c = after.coop!;
+  if (after.players.length !== 1 || c.fire || c.stage !== before.coop!.stage) return after;
+  return setCoop(after, { attackLeft: Math.min(c.attackTotal, c.attackLeft + SOLO_DELAY_MS) });
+}
+
 /** 불을 맞은 사람을 빼고 모두 이번 라운드에 맞혔는지 */
 function allAnswered(s: GameState): boolean {
   return s.coop!.answered.every((a, i) => a || isBurning(s, i));
@@ -44,7 +54,7 @@ export const coop: Mode = {
       const combo = applyDamage(state, helpers, true);
       state = setCoop(combo.state, { answered: combo.state.coop!.answered.map(() => false) });
       events.push(...combo.events);
-      return { state, nextRound: true, events };
+      return { state: delayAttack(before, state), nextRound: true, events };
     }
     return { state, nextRound: false, events };
   },

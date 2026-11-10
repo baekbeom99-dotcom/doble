@@ -42,11 +42,11 @@ test('시간 정지 중에는 시간이 줄지 않지만 오답 −2초는 적�
   let s = createGame(solo(), TEST_POOL, MODES);
   s = { ...s, mode: { ...s.mode, timeStopUntil: 3000 } };
   s = wait(s, 2000);
-  expect(s.mode.timeLeft).toBe(30000);
+  expect(s.mode.timeLeft).toBe(40000);
   s = reduce(s, { type: 'TAP', player: 0, symbol: wrongOf(s), round: s.round.index }, MODES).state;
-  expect(s.mode.timeLeft).toBe(28000);
+  expect(s.mode.timeLeft).toBe(38000);
   s = wait(s, 2000);
-  expect(s.mode.timeLeft).toBe(27000);
+  expect(s.mode.timeLeft).toBe(37000);
 });
 test('혼자 하기 아이템은 힌트·시간 정지·2배 중에서 나온다', () => {
   const seen = new Set<string>();

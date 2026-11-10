@@ -81,12 +81,12 @@ test('폭탄 돌리기를 고르면 시작 카드와 넘길 사람 설정이 나
   fireEvent.click(screen.getByRole('radio', { name: '직접 고르기' }));
   expect(await startWith(onStart)).toMatchObject({ mode: 'bomb', bomb: { startHand: 7, target: 'choose' } });
 });
-test('탑 쌓기는 라운드 수 대신 카드 수를 고른다', async () => {
-  const onStart = vi.fn();
-  render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
-  fireEvent.click(screen.getByRole('radio', { name: '탑 쌓기' }));
-  expect(screen.getByRole('group', { name: '카드 수' })).toBeInTheDocument();
-  expect((await startWith(onStart)).mode).toBe('tower');
+test('대결 방식은 점수제와 폭탄 돌리기 둘이고, 폭탄 돌리기를 고르면 규칙 설명이 나온다', () => {
+  render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
+  expect(screen.queryByRole('radio', { name: '탑 쌓기' })).not.toBeInTheDocument();
+  expect(screen.queryByText(/카드가 먼저 0장이 되면 이겨요/)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('radio', { name: '폭탄 돌리기' }));
+  expect(screen.getByText(/카드가 먼저 0장이 되면 이겨요/)).toBeInTheDocument();
 });
 test('덧붙는 요소는 기본으로 켜져 있고 끌 수 있다', async () => {
   const onStart = vi.fn();
@@ -163,6 +163,21 @@ test('혼자 하기: 스테이지 도전은 열린 단계까지 고를 수 있�
   expect(screen.queryByRole('slider', { name: '플레이어 1 심볼 수' })).not.toBeInTheDocument();
   expect(await startWith(onStart)).toMatchObject({ mode: 'soloStage', stage: 3, rules: { items: true } });
 });
+test('혼자 하기: 서바이벌은 제한 시간을 고를 수 있고 기본은 40초', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="solo" onStart={onStart} onBack={() => {}} />);
+  await waitLoaded();
+  const group = screen.getByRole('group', { name: '제한 시간' });
+  expect(within(group).getByRole('radio', { name: '40초' })).toBeChecked();
+  fireEvent.click(within(group).getByRole('radio', { name: '60초' }));
+  expect(await startWith(onStart)).toMatchObject({ mode: 'soloSurvival', timeLimit: 60 });
+});
+test('혼자 하기: 제한 시간은 서바이벌에서만 고른다', async () => {
+  render(<Setup kind="solo" onStart={() => {}} onBack={() => {}} />);
+  await waitLoaded();
+  fireEvent.click(screen.getByRole('radio', { name: '몬스터 사냥' }));
+  expect(screen.queryByRole('group', { name: '제한 시간' })).not.toBeInTheDocument();
+});
 test('혼자 하기: 기록이 없으면 스테이지는 1단계만', async () => {
   render(<Setup kind="solo" onStart={() => {}} onBack={() => {}} />);
   await waitLoaded();
@@ -189,16 +204,29 @@ test('기본 글자 세트(받침 없음)는 이중모음을 빼서 카드당 �
   render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
   await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '5'));
 });
-test('글자 세트의 초성은 콤보박스 대신 토글 버튼으로 고른다', async () => {
+test('글자 세트의 초성은 팝업에서 토글 버튼으로 고른다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
   expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-  const initials = within(screen.getByRole('group', { name: '초성' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '초성 고르기' }));
+  const initials = within(within(screen.getByRole('dialog', { name: '초성 고르기' })).getByRole('group', { name: '초성' }));
   expect(initials.getAllByRole('radio')).toHaveLength(INITIALS.length);
   fireEvent.click(initials.getByRole('radio', { name: 'ㄴ' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  expect(screen.getByRole('button', { name: '초성 고르기' })).toHaveTextContent('ㄴ');
   fireEvent.click(screen.getByRole('switch', { name: '받침 있는 글자' }));
   await startWith(onStart);
   expect(onStart.mock.calls[0][0].set).toEqual({ kind: 'syllable', initial: 'ㄴ', batchim: true });
+});
+test('글자 세트를 고르면 초성 팝업이 바로 열린다', () => {
+  render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
+  fireEvent.click(screen.getByRole('radio', { name: '자음' }));
+  expect(screen.queryByRole('button', { name: '초성 고르기' })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('radio', { name: '글자' }));
+  expect(screen.getByRole('dialog', { name: '초성 고르기' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 });
 test('켜고 끄는 설정은 스위치로 보여준다', () => {
   render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
