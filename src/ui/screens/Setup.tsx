@@ -3,6 +3,7 @@ import { INITIALS } from '../../content/hangul';
 import { createSymbolSet, maxCardSize, MAX_CARD_SIZE, MIN_CARD_SIZE } from '../../content/registry';
 import type { SetConfig, SymbolDef } from '../../content/types';
 import { SEAT_COLORS, type SeatColor } from '../../engine/seats';
+import { EMPTY_RECORDS, type Records } from '../../services/records';
 import { ALL_RULES, NO_RULES, type BombConfig, type GameConfig, type ModeId, type Rules } from '../../engine/state';
 
 export type SetupKind = 'solo' | 'versus' | 'team' | 'coop';
@@ -34,7 +35,14 @@ interface Props {
   kind: SetupKind;
   onStart: (config: GameConfig, symbols: SymbolDef[]) => void;
   onBack: () => void;
+  /** 저장된 기록 (스테이지 도전의 열린 단계) */
+  records?: Records;
 }
+
+type SoloMethod = 'survival' | 'stage' | 'hunt';
+const SOLO_METHODS: Record<SoloMethod, string> = { survival: '서바이벌', stage: '스테이지 도전', hunt: '몬스터 사냥' };
+/** 혼자 하기 서바이벌·스테이지에는 아이템만 켠다 */
+const SOLO_RULES = { combo: false, finalRound: false, items: true };
 
 function Radio(props: { name: string; label: string; checked: boolean; onChange: () => void }) {
   return (
@@ -54,8 +62,10 @@ function Check(props: { label: string; checked: boolean; onChange: (v: boolean) 
   );
 }
 
-export function Setup({ kind, onStart, onBack }: Props) {
+export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props) {
   const solo = kind === 'solo';
+  const [soloMethod, setSoloMethod] = useState<SoloMethod>('survival');
+  const [stagePick, setStagePick] = useState<number | null>(null);
   const coopKind = kind === 'coop';
   // 대결 방식·덧붙는 요소·라운드 수는 같이 하기와 팀 대결에만 있다
   const versusLike = kind === 'versus' || kind === 'team';
@@ -108,6 +118,11 @@ export function Setup({ kind, onStart, onBack }: Props) {
 
   const starting = useRef(false);
 
+  // 스테이지 도전: 세트마다 열린 단계까지 고를 수 있다 (기본은 열린 최고 단계)
+  const unlocked = records.unlocked[createSymbolSet(setConfig).id] ?? 1;
+  const stage = Math.min(stagePick ?? unlocked, unlocked);
+  const stageMode = solo && soloMethod === 'stage';
+
   const start = async () => {
     // 빠르게 두 번 눌러도 한 번만 시작한다
     if (starting.current) return;
@@ -122,7 +137,7 @@ export function Setup({ kind, onStart, onBack }: Props) {
       cardSize: clampSize(sizes[i], limit),
     }));
     onStart({
-      mode: solo ? 'soloSurvival' : coopKind ? 'coop' : method,
+      mode: solo ? (soloMethod === 'survival' ? 'soloSurvival' : soloMethod === 'stage' ? 'soloStage' : 'coop') : coopKind ? 'coop' : method,
       players,
       set: setConfig,
       rotationStep,
@@ -130,7 +145,8 @@ export function Setup({ kind, onStart, onBack }: Props) {
       speech,
       scoreRounds: rounds,
       seed: Date.now(),
-      rules: versusLike ? rules : NO_RULES,
+      rules: versusLike ? rules : solo && soloMethod !== 'hunt' ? SOLO_RULES : NO_RULES,
+      ...(stageMode ? { stage } : {}),
       teams: team ? teamsFor(count) : null,
       bomb,
     }, syms);
@@ -142,6 +158,23 @@ export function Setup({ kind, onStart, onBack }: Props) {
   return (
     <main className="screen">
       <h1 className="title">{TITLES[kind]}</h1>
+
+      {solo && (
+        <fieldset className="field" aria-label="방식">
+          <legend>방식</legend>
+          {(Object.keys(SOLO_METHODS) as SoloMethod[]).map(m => (
+            <Radio key={m} name="solo-method" label={SOLO_METHODS[m]} checked={soloMethod === m} onChange={() => setSoloMethod(m)} />
+          ))}
+        </fieldset>
+      )}
+      {stageMode && (
+        <fieldset className="field" aria-label="단계">
+          <legend>단계</legend>
+          {Array.from({ length: unlocked }, (_, i) => i + 1).map(n => (
+            <Radio key={n} name="stage" label={String(n)} checked={stage === n} onChange={() => setStagePick(n)} />
+          ))}
+        </fieldset>
+      )}
 
       {COUNTS[kind].length > 1 && (
         <fieldset className="field" aria-label="인원">
@@ -173,6 +206,7 @@ export function Setup({ kind, onStart, onBack }: Props) {
               </label>
             ))}
           </fieldset>
+          {!stageMode && (
           <label className="range">
             심볼 <b>{clampSize(sizes[i], sliderMax)}</b>
             <input
@@ -185,6 +219,7 @@ export function Setup({ kind, onStart, onBack }: Props) {
               onChange={e => setSizes(ss => ss.map((v, j) => (j === i ? Number(e.target.value) : v)))}
             />
           </label>
+          )}
         </div>
       ))}
       {max > 0 && max < MAX_CARD_SIZE && <p className="note">심볼이 부족해서 카드당 최대 {max}개까지 쓸 수 있어요</p>}

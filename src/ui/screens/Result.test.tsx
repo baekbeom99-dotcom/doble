@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MODES } from '../../engine/modes';
 import { createGame } from '../../engine/reducer';
 import type { SeatColor } from '../../engine/seats';
@@ -53,4 +53,40 @@ test('협동 결과는 물리친 몬스터 수와 단계를 보여준다', () =>
   show({ ...s, coop: { ...s.coop!, stage: 4 } });
   expect(screen.getByText('3마리 물리쳤어요')).toBeInTheDocument();
   expect(screen.getByText('4단계까지 갔어요')).toBeInTheDocument();
+});
+test('서바이벌: 점수, 판정 수, 새 기록, 새 배지', () => {
+  const s = createGame(testConfig({ mode: 'soloSurvival', players: [three[0]] }), TEST_POOL, MODES);
+  render(<Result state={{ ...s, mode: { ...s.mode, correct: 12, score: 30, perfect: 8, great: 3, good: 1 } }}
+    onRetry={() => {}} onHome={() => {}} outcome={{ newBest: true, best: 30, newBadges: [{ id: 'first', name: '첫 게임', description: '' }] }} />);
+  expect(screen.getByText('12개 찾았어요')).toBeInTheDocument();
+  expect(screen.getByText('30점')).toBeInTheDocument();
+  expect(screen.getByText('Perfect 8 · Great 3 · Good 1')).toBeInTheDocument();
+  expect(screen.getByText('새 기록!')).toBeInTheDocument();
+  expect(screen.getByText('새 배지: 첫 게임')).toBeInTheDocument();
+});
+test('스테이지 클리어: 별과 다음 단계 버튼', () => {
+  const onNextStage = vi.fn();
+  const s = createGame(testConfig({ mode: 'soloStage', stage: 4, players: [three[0]] }), TEST_POOL, MODES);
+  render(<Result state={{ ...s, mode: { ...s.mode, cleared: 1, stars: 2 } }} onRetry={() => {}} onHome={() => {}} onNextStage={onNextStage} />);
+  expect(screen.getByText('4단계 클리어!')).toBeInTheDocument();
+  expect(screen.getByText('★★☆')).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '다음 단계' }));
+  expect(onNextStage).toHaveBeenCalled();
+});
+test('스테이지 20 클리어에는 다음 단계 버튼이 없다', () => {
+  const s = createGame(testConfig({ mode: 'soloStage', stage: 20, players: [three[0]] }), TEST_POOL, MODES);
+  render(<Result state={{ ...s, mode: { ...s.mode, cleared: 1, stars: 3 } }} onRetry={() => {}} onHome={() => {}} onNextStage={() => {}} />);
+  expect(screen.queryByRole('button', { name: '다음 단계' })).not.toBeInTheDocument();
+});
+test('스테이지 실패: 다음 단계 버튼이 없다', () => {
+  const s = createGame(testConfig({ mode: 'soloStage', stage: 4, players: [three[0]] }), TEST_POOL, MODES);
+  render(<Result state={s} onRetry={() => {}} onHome={() => {}} onNextStage={() => {}} />);
+  expect(screen.getByText('4단계 실패')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: '다음 단계' })).not.toBeInTheDocument();
+});
+test('몬스터 사냥 새 기록', () => {
+  const s = createGame(testConfig({ mode: 'coop', players: [three[0]] }), TEST_POOL, MODES);
+  render(<Result state={{ ...s, coop: { ...s.coop!, stage: 3 } }} onRetry={() => {}} onHome={() => {}} outcome={{ newBest: true, best: 3, newBadges: [] }} />);
+  expect(screen.getByText('2마리 물리쳤어요')).toBeInTheDocument();
+  expect(screen.getByText('새 기록!')).toBeInTheDocument();
 });

@@ -1,17 +1,34 @@
 import { useState } from 'react';
+import { createSymbolSet } from './content/registry';
 import type { SymbolDef } from './content/types';
 import type { GameConfig, GameState } from './engine/state';
+import { applyGame, bestFor, loadRecords, saveRecords, summarize } from './services/records';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
 import { Game } from './ui/screens/Game';
 import { Home } from './ui/screens/Home';
-import { Result } from './ui/screens/Result';
+import { Result, type Outcome } from './ui/screens/Result';
 import { Setup, type SetupKind } from './ui/screens/Setup';
 
 type Screen =
   | { name: 'home' }
   | { name: 'setup'; kind: SetupKind }
   | { name: 'game'; config: GameConfig; symbols: SymbolDef[] }
-  | { name: 'result'; config: GameConfig; symbols: SymbolDef[]; state: GameState };
+  | { name: 'result'; config: GameConfig; symbols: SymbolDef[]; state: GameState; outcome: Outcome | null };
+
+/** 혼자 하기 결과를 기록에 반영하고 저장한다. 혼자 하기가 아니면 null */
+export function recordGame(state: GameState, setId: string, setName: string): Outcome | null {
+  const summary = summarize(state, setId, setName);
+  if (!summary) return null;
+  const { records, newBest, newBadges } = applyGame(loadRecords(), summary);
+  saveRecords(records);
+  const best = summary.mode === 'soloSurvival' || summary.mode === 'coop' ? bestFor(records, summary.mode, setId) : null;
+  return { newBest, newBadges, best };
+}
+
+const setInfo = (config: GameConfig) => {
+  const set = createSymbolSet(config.set);
+  return { setId: set.id, setName: set.name };
+};
 
 export default function App() {
   const [resets, setResets] = useState(0);
@@ -27,6 +44,7 @@ export default function App() {
 
 function Screens() {
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
+  const startGame = (config: GameConfig, symbols: SymbolDef[]) => setScreen({ name: 'game', config, symbols });
 
   switch (screen.name) {
     case 'home':
@@ -35,26 +53,36 @@ function Screens() {
       return (
         <Setup
           kind={screen.kind}
+          records={loadRecords()}
           onBack={() => setScreen({ name: 'home' })}
-          onStart={(config, symbols) => setScreen({ name: 'game', config, symbols })}
+          onStart={startGame}
         />
       );
-    case 'game':
+    case 'game': {
+      const { config, symbols } = screen;
+      const { setId, setName } = setInfo(config);
+      const best = config.mode === 'soloSurvival' ? bestFor(loadRecords(), 'soloSurvival', setId) : null;
       return (
         <Game
-          key={screen.config.seed}
-          config={screen.config}
-          symbols={screen.symbols}
-          onOver={state => setScreen({ name: 'result', config: screen.config, symbols: screen.symbols, state })}
+          key={config.seed}
+          config={config}
+          symbols={symbols}
+          best={best}
+          onOver={state => setScreen({ name: 'result', config, symbols, state, outcome: recordGame(state, setId, setName) })}
         />
       );
-    case 'result':
+    }
+    case 'result': {
+      const { config, symbols } = screen;
       return (
         <Result
           state={screen.state}
+          outcome={screen.outcome}
           onHome={() => setScreen({ name: 'home' })}
-          onRetry={() => setScreen({ name: 'game', config: { ...screen.config, seed: Date.now() }, symbols: screen.symbols })}
+          onRetry={() => startGame({ ...config, seed: Date.now() }, symbols)}
+          onNextStage={() => startGame({ ...config, stage: (config.stage ?? 1) + 1, seed: Date.now() }, symbols)}
         />
       );
+    }
   }
 }

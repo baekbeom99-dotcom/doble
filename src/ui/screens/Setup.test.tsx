@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import type { PlayerConfig } from '../../engine/state';
 import { Setup } from './Setup';
+import { createSymbolSet } from '../../content/registry';
+import { EMPTY_RECORDS } from '../../services/records';
+
+const SET_ID = createSymbolSet({ kind: 'syllable', initial: 'ㄱ', batchim: false }).id;
 
 /** 글자 세트를 다 불러와 슬라이더 최대값이 정해질 때까지 기다린다 */
 const waitLoaded = () =>
@@ -105,12 +109,6 @@ test('팀 대결 3인은 2:1이고 혼자인 사람의 심볼 수가 2 낮다', 
   expect(cfg.teams).toEqual([0, 0, 1]);
   expect(cfg.players[2].cardSize).toBe(cfg.players[0].cardSize - 2);
 });
-test('혼자 하기는 덧붙는 요소가 모두 꺼져 있다', async () => {
-  const onStart = vi.fn();
-  render(<Setup kind="solo" onStart={onStart} onBack={() => {}} />);
-  expect(screen.queryByRole('checkbox', { name: '아이템' })).not.toBeInTheDocument();
-  expect(await startWith(onStart)).toMatchObject({ mode: 'soloSurvival', rules: { combo: false, finalRound: false, items: false }, teams: null });
-});
 test('시작 버튼을 빠르게 두 번 눌러도 한 번만 시작한다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
@@ -150,4 +148,34 @@ test('협동은 1~4명이고 대결 방식이 없다', async () => {
   expect(within(screen.getByRole('group', { name: '인원' })).getAllByRole('radio')).toHaveLength(4);
   expect(screen.queryByRole('group', { name: '대결 방식' })).not.toBeInTheDocument();
   expect(await startWith(onStart)).toMatchObject({ mode: 'coop', teams: null, rules: { combo: false, finalRound: false, items: false } });
+});
+test('혼자 하기: 스테이지 도전은 열린 단계까지 고를 수 있고 심볼 수 슬라이더가 없다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="solo" onStart={onStart} onBack={() => {}} records={{ ...EMPTY_RECORDS, unlocked: { [SET_ID]: 3 } }} />);
+  await waitLoaded();
+  fireEvent.click(screen.getByRole('radio', { name: '스테이지 도전' }));
+  expect(within(screen.getByRole('group', { name: '단계' })).getAllByRole('radio')).toHaveLength(3);
+  expect(screen.queryByRole('slider', { name: '플레이어 1 심볼 수' })).not.toBeInTheDocument();
+  expect(await startWith(onStart)).toMatchObject({ mode: 'soloStage', stage: 3, rules: { items: true } });
+});
+test('혼자 하기: 기록이 없으면 스테이지는 1단계만', async () => {
+  render(<Setup kind="solo" onStart={() => {}} onBack={() => {}} />);
+  await waitLoaded();
+  fireEvent.click(screen.getByRole('radio', { name: '스테이지 도전' }));
+  expect(within(screen.getByRole('group', { name: '단계' })).getAllByRole('radio')).toHaveLength(1);
+});
+test('혼자 하기: 서바이벌은 아이템이 켜져 있다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="solo" onStart={onStart} onBack={() => {}} />);
+  await waitLoaded();
+  expect(await startWith(onStart)).toMatchObject({ mode: 'soloSurvival', rules: { combo: false, finalRound: false, items: true } });
+});
+test('혼자 하기: 몬스터 사냥은 1인 협동', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="solo" onStart={onStart} onBack={() => {}} />);
+  await waitLoaded();
+  fireEvent.click(screen.getByRole('radio', { name: '몬스터 사냥' }));
+  const cfg = await startWith(onStart);
+  expect(cfg).toMatchObject({ mode: 'coop', rules: { items: false } });
+  expect(cfg.players).toHaveLength(1);
 });

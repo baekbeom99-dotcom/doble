@@ -1,5 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import App from './App';
+import App, { recordGame } from './App';
+import { MODES } from './engine/modes';
+import { createGame } from './engine/reducer';
+import { TEST_POOL, testConfig } from './engine/testConfig';
 
 test('홈 화면 제목을 보여준다', () => {
   render(<App />);
@@ -24,4 +27,13 @@ test('협동 → 협동 설정 화면', async () => {
   fireEvent.click(screen.getByRole('button', { name: '협동' }));
   expect(screen.getByRole('heading', { name: '협동' })).toBeInTheDocument();
   await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).not.toHaveAttribute('max', '3'));
+});
+test('게임 기록이 localStorage에 저장된다', () => {
+  localStorage.clear();
+  const s = createGame(testConfig({ mode: 'soloSurvival', players: [testConfig().players[0]] }), TEST_POOL, MODES);
+  const out = recordGame({ ...s, mode: { ...s.mode, score: 12, correct: 6 } }, 'S', 'ㄱ 글자');
+  expect(out?.newBest).toBe(true);
+  expect(out?.best).toBe(12);
+  expect(JSON.parse(localStorage.getItem('doble.records.v1')!).best['soloSurvival|S']).toBe(12);
+  expect(recordGame(createGame(testConfig(), TEST_POOL, MODES), 'S', 'n')).toBeNull();
 });
