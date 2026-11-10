@@ -172,3 +172,10 @@ test('협동 1인: 정보 칸 하나와 원소 4개, 배지에 점수 숫자가 
   ['🔥', '💧', '🌿', '⚡'].forEach(icon => expect(within(screen.getByTestId('seat-0')).getByText(icon)).toBeInTheDocument());
   expect(within(screen.getByTestId('badge-0')).queryByText('0')).not.toBeInTheDocument();
 });
+test('협동: 라운드가 안 바뀌는 정답에도 노란 정답 강조가 나온다', () => {
+  const cfg = testConfig({ mode: 'coop' });
+  render(<Game config={cfg} symbols={symbols} onOver={() => {}} />);
+  const ans = createGame(cfg, pool21, MODES, symbols).round.answers[0];
+  tapSeat(0, ans);
+  expect(screen.getByTestId('seat-0').querySelector(`[data-symbol="${ans}"]`)).toHaveClass('glyph--hit');
+});

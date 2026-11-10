@@ -53,8 +53,14 @@ export function Game({ config, symbols, onOver }: Props) {
   onOverRef.current = onOver;
   const freezeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const [hits, setHits] = useState<Map<number, string>>(new Map());
+  const hitTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   // 화면을 떠날 때 정답 강조 타이머를 정리한다
-  useEffect(() => () => { if (freezeTimer.current) clearTimeout(freezeTimer.current); }, []);
+  useEffect(() => () => {
+    if (freezeTimer.current) clearTimeout(freezeTimer.current);
+    hitTimers.current.forEach(clearTimeout);
+  }, []);
 
   useEffect(() => {
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -127,6 +133,14 @@ export function Game({ config, symbols, onOver }: Props) {
       controller.hold(FLASH_MS);
       if (freezeTimer.current) clearTimeout(freezeTimer.current);
       freezeTimer.current = setTimeout(() => { freezeTimer.current = null; setFreeze(null); }, FLASH_MS);
+    } else if (events.some(e => e.type === 'correct')) {
+      // 라운드가 그대로인 정답(협동에서 먼저 맞힌 사람)도 노란 정답 강조를 잠깐 보여준다
+      setHits(prev => new Map(prev).set(player, symbol));
+      hitTimers.current.push(setTimeout(() => setHits(prev => {
+        const next = new Map(prev);
+        if (next.get(player) === symbol) next.delete(player);
+        return next;
+      }), FLASH_MS));
     }
   };
 
@@ -173,8 +187,8 @@ export function Game({ config, symbols, onOver }: Props) {
           name={config.players[i].name}
           showName={config.players.length <= 2 && !isCoop}
           locked={state.now < state.players[i].lockedUntil}
-          flash={freeze?.player === i ? 'correct' : wrongFlash.has(i) ? 'wrong' : null}
-          correctSymbol={freeze?.player === i ? freeze.symbol : null}
+          flash={freeze?.player === i || hits.has(i) ? 'correct' : wrongFlash.has(i) ? 'wrong' : null}
+          correctSymbol={freeze?.player === i ? freeze.symbol : hits.get(i) ?? null}
           onTap={symbol => tap(i, symbol)}
           streak={rules.combo ? state.players[i].streak : 0}
           item={rules.items ? state.players[i].item : null}

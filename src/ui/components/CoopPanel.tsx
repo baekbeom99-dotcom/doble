@@ -12,6 +12,8 @@ interface Props {
 }
 
 const seconds = (ms: number) => Math.max(0, Math.ceil(ms / 1000));
+/** 원소 순서가 길어질수록 아이콘을 줄여 정보 칸 안에 들어가게 한다 (3개 20px … 6개 12px) */
+const sequenceFont = (len: number) => `${Math.max(12, 20 - 3 * (len - 3))}px`;
 const pct = (v: number, max: number) => `${Math.max(0, Math.min(100, (v / max) * 100))}%`;
 
 export function CoopPanel({ coop, attackEvery, banner }: Props) {
@@ -20,7 +22,7 @@ export function CoopPanel({ coop, attackEvery, banner }: Props) {
     <div className="coop">
       {banner && <div className="coop__banner">{banner}</div>}
       <div className="coop__head">
-        <Monster stage={stage} size={52} />
+        <Monster stage={stage} size={44} />
         <div className="coop__stats">
           <span className="coop__stage">{stage}단계</span>
           <span className="meter meter--hp" aria-label={`몬스터 체력 ${hp}/${maxHp}`}>
@@ -36,7 +38,7 @@ export function CoopPanel({ coop, attackEvery, banner }: Props) {
       {challenge ? (
         <div className="coop__challenge">
           {challenge.kind === 'elements' ? (
-            <span className="coop__sequence">
+            <span className="coop__sequence" style={{ fontSize: sequenceFont(challenge.sequence.length) }}>
               {challenge.sequence.map((e, i) => (
                 <span
                   key={i}
