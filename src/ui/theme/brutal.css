@@ -218,3 +218,12 @@ body {
 .stars { font-size: 44px; margin: 0; letter-spacing: 4px; }
 .grades { font-size: 18px; margin: 0; }
 .new-badges { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; font-size: 20px; }
+
+/* ---------- 수집함 ---------- */
+.collection__badges { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.badge-card { border: 3px solid var(--ink); border-radius: 12px; background: var(--hit); padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; }
+.badge-card small { font-size: 13px; color: #5f5e5a; }
+.badge-card.is-locked { background: #fff; opacity: .4; }
+.badge-card--master { background: #ff8fb8; }
+.collection__list { flex-direction: column; align-items: flex-start; }
+.collection__list p { margin: 0; }

@@ -4,6 +4,7 @@ import type { SymbolDef } from './content/types';
 import type { GameConfig, GameState } from './engine/state';
 import { applyGame, bestFor, loadRecords, saveRecords, summarize } from './services/records';
 import { ErrorBoundary } from './ui/components/ErrorBoundary';
+import { Collection } from './ui/screens/Collection';
 import { Game } from './ui/screens/Game';
 import { Home } from './ui/screens/Home';
 import { Result, type Outcome } from './ui/screens/Result';
@@ -11,6 +12,7 @@ import { Setup, type SetupKind } from './ui/screens/Setup';
 
 type Screen =
   | { name: 'home' }
+  | { name: 'collection' }
   | { name: 'setup'; kind: SetupKind }
   | { name: 'game'; config: GameConfig; symbols: SymbolDef[] }
   | { name: 'result'; config: GameConfig; symbols: SymbolDef[]; state: GameState; outcome: Outcome | null };
@@ -48,7 +50,9 @@ function Screens() {
 
   switch (screen.name) {
     case 'home':
-      return <Home onPick={kind => setScreen({ name: 'setup', kind })} />;
+      return <Home onPick={kind => setScreen({ name: 'setup', kind })} onCollection={() => setScreen({ name: 'collection' })} />;
+    case 'collection':
+      return <Collection records={loadRecords()} onBack={() => setScreen({ name: 'home' })} />;
     case 'setup':
       return (
         <Setup

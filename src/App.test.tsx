@@ -37,3 +37,10 @@ test('게임 기록이 localStorage에 저장된다', () => {
   expect(JSON.parse(localStorage.getItem('doble.records.v1')!).best['soloSurvival|S']).toBe(12);
   expect(recordGame(createGame(testConfig(), TEST_POOL, MODES), 'S', 'n')).toBeNull();
 });
+test('홈 → 수집함 → 처음으로', () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole('button', { name: '수집함' }));
+  expect(screen.getByRole('heading', { name: '수집함' })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole('button', { name: '처음으로' }));
+  expect(screen.getByRole('heading', { name: '도블 놀이' })).toBeInTheDocument();
+});

@@ -1,6 +1,6 @@
 import type { SetupKind } from './Setup';
 
-export function Home({ onPick }: { onPick: (kind: SetupKind) => void }) {
+export function Home({ onPick, onCollection }: { onPick: (kind: SetupKind) => void; onCollection?: () => void }) {
   return (
     <main className="screen screen--center">
       <h1 className="title">도블 놀이</h1>
@@ -10,6 +10,7 @@ export function Home({ onPick }: { onPick: (kind: SetupKind) => void }) {
         <button className="btn btn--big" style={{ background: '#7FDBFF' }} onClick={() => onPick('team')}>팀 대결</button>
         <button className="btn btn--big" style={{ background: '#B8F26B' }} onClick={() => onPick('coop')}>협동</button>
       </div>
+      {onCollection && <button className="btn" onClick={onCollection}>수집함</button>}
     </main>
   );
 }
