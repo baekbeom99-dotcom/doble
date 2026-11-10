@@ -201,3 +201,17 @@ body {
 .hud--tall { align-items: stretch; padding: 0; }
 .sub-result { font-size: 24px; margin: 0; }
 .seat--dim .glyph--hit { opacity: 1; }
+
+/* ---------- 혼자 하기 ---------- */
+.solo { display: flex; flex-direction: column; justify-content: space-between; gap: 2px; width: 100%; height: 100%; padding: 4px 8px; }
+.solo__row { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+.solo__time, .solo__score { font-size: 22px; font-weight: 400; }
+.solo__effects { min-height: 26px; justify-content: flex-start; }
+.solo__fever, .solo__double { background: var(--hit); border: 2px solid var(--ink); border-radius: 6px; padding: 0 6px; font-size: 14px; }
+.solo__grade { margin-left: auto; font-size: 20px; }
+.solo__grade--perfect { color: #e24b4a; }
+.solo__grade--great { color: #378add; }
+.solo__ghost { display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.meter--ghost > i { background: #a99bff; }
+.table.is-fever { box-shadow: inset 0 0 0 10px var(--hit); animation: fever-blink 500ms steps(2) infinite; }
+@keyframes fever-blink { 50% { box-shadow: inset 0 0 0 10px transparent; } }

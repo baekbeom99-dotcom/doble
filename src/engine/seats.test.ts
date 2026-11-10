@@ -119,3 +119,17 @@ describe.each(VIEWPORTS)('tallHud %ix%i', (W, H) => {
     }
   });
 });
+
+test.each(VIEWPORTS)('%ix%i 1인 중앙 카드는 0.26×min(W,H)이고 자리와 간격을 유지한다', (W, H) => {
+  const t = computeTable(1, W, H, { tallHud: true });
+  expect(t.center.rx).toBeCloseTo(0.26 * Math.min(W, H));
+  for (const [x, y] of gridPoints({ x: 0, y: 0, w: W, h: H })) {
+    if (pointInRegion(x, y, t.seats[0].region)) expect(Math.hypot(x - t.center.cx, y - t.center.cy)).toBeGreaterThanOrEqual(t.center.rx * 1.2);
+  }
+  for (let seed = 0; seed < 10; seed++) {
+    expect(() => layoutSymbols({ region: t.seats[0].region, exclusions: [t.seats[0].badge], count: 8, rng: createRng(seed) })).not.toThrow();
+  }
+});
+test('2인 중앙 카드는 그대로 0.22×min(W,H)이다', () => {
+  expect(computeTable(2, 1024, 768).center.rx).toBeCloseTo(0.22 * 768);
+});

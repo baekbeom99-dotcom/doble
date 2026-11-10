@@ -26,6 +26,7 @@ export interface TableGeom {
 }
 
 const CENTER_RATIO = 0.22;
+const SOLO_CENTER_RATIO = 0.26;
 const MIN_GAP_RATIO = 0.2;
 const SHRINK = 0.95;
 /** 화면이 아주 작아 조건을 끝내 만족하지 못할 때 무한히 줄이지 않도록 하는 상한 */
@@ -74,7 +75,8 @@ function clearOf(e: Ellipse, rects: Rect[]): boolean {
 }
 
 export function computeTable(playerCount: 1 | 2 | 3 | 4, W: number, H: number, opts: TableOptions = {}): TableGeom {
-  const R0 = CENTER_RATIO * Math.min(W, H);
+  // 혼자 할 때는 자리가 하나라 공간이 넉넉하므로 중앙 카드를 크게 한다
+  const R0 = (playerCount === 1 ? SOLO_CENTER_RATIO : CENTER_RATIO) * Math.min(W, H);
   const center: Ellipse = { cx: W / 2, cy: H / 2, rx: R0, ry: R0 };
   const hudH = 0.075 * H;
   const box: HudBox = opts.tallHud ? { w: 0.2 * W, h: 0.2 * H } : { w: 0.16 * W, h: hudH };
