@@ -19,12 +19,17 @@ type Screen =
 
 /** 혼자 하기 결과를 기록에 반영하고 저장한다. 혼자 하기가 아니면 null */
 export function recordGame(state: GameState, setId: string, setName: string): Outcome | null {
-  const summary = summarize(state, setId, setName);
-  if (!summary) return null;
-  const { records, newBest, newBadges } = applyGame(loadRecords(), summary);
-  saveRecords(records);
-  const best = summary.mode === 'soloSurvival' || summary.mode === 'coop' ? bestFor(records, summary.mode, setId) : null;
-  return { newBest, newBadges, best };
+  // 결과 화면으로 넘어가는 길목이라, 기록 처리에 실패해도 예외를 밖으로 내보내지 않는다
+  try {
+    const summary = summarize(state, setId, setName);
+    if (!summary) return null;
+    const { records, newBest, newBadges } = applyGame(loadRecords(), summary);
+    saveRecords(records);
+    const best = summary.mode === 'soloSurvival' || summary.mode === 'coop' ? bestFor(records, summary.mode, setId) : null;
+    return { newBest, newBadges, best };
+  } catch {
+    return null;
+  }
 }
 
 const setInfo = (config: GameConfig) => {

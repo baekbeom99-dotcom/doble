@@ -44,3 +44,18 @@ test('홈 → 수집함 → 처음으로', () => {
   fireEvent.click(screen.getByRole('button', { name: '처음으로' }));
   expect(screen.getByRole('heading', { name: '도블 놀이' })).toBeInTheDocument();
 });
+test('기록 저장 중 오류가 나도 recordGame은 예외를 던지지 않는다', () => {
+  const spy = vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('SecurityError'); });
+  try {
+    const s = createGame(testConfig({ mode: 'soloSurvival', players: [testConfig().players[0]] }), TEST_POOL, MODES);
+    expect(() => recordGame({ ...s, mode: { ...s.mode, score: 5, correct: 3 } }, 'S', 'n')).not.toThrow();
+  } finally { spy.mockRestore(); }
+});
+test('저장소에 접근할 수 없어도 설정 화면이 열린다', () => {
+  const spy = vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('SecurityError'); });
+  try {
+    render(<App />);
+    fireEvent.click(screen.getByRole('button', { name: '혼자 하기' }));
+    expect(screen.getByRole('heading', { name: '혼자 하기' })).toBeInTheDocument();
+  } finally { spy.mockRestore(); }
+});

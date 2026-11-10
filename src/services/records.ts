@@ -101,18 +101,28 @@ export function applyGame(r: Records, g: GameSummary): { records: Records; newBe
   return { records: next, newBest, newBadges };
 }
 
+const isMap = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+
+/** 저장된 기록의 모양을 안쪽 값까지 확인한다 */
 function isRecords(x: unknown): x is Records {
-  if (!x || typeof x !== 'object' || Array.isArray(x)) return false;
+  if (!isMap(x)) return false;
   const r = x as Partial<Records>;
-  const isMap = (v: unknown) => !!v && typeof v === 'object' && !Array.isArray(v);
-  return r.version === 1 && isMap(r.best) && isMap(r.stars) && isMap(r.unlocked) &&
-    typeof r.totalCorrect === 'number' && typeof r.fevers === 'number' && Array.isArray(r.badges);
+  return r.version === 1 &&
+    isMap(r.best) && Object.values(r.best).every(isNum) &&
+    isMap(r.stars) && Object.values(r.stars).every(v => Array.isArray(v) && v.every(isNum)) &&
+    isMap(r.unlocked) && Object.values(r.unlocked).every(isNum) &&
+    isNum(r.totalCorrect) && isNum(r.fevers) &&
+    Array.isArray(r.badges) && r.badges.every(b => typeof b === 'string');
 }
 
+/** 저장소를 꺼낸다. 브라우저가 접근을 막으면(SecurityError) 여기서 예외가 나므로 try 안에서만 부른다 */
+const storageOf = (storage?: Storage) => storage ?? globalThis.localStorage;
+
 /** 저장된 기록을 읽는다. 읽을 수 없거나 망가졌으면 빈 기록 */
-export function loadRecords(storage: Storage | undefined = globalThis.localStorage): Records {
+export function loadRecords(storage?: Storage): Records {
   try {
-    const raw = storage?.getItem(RECORDS_KEY);
+    const raw = storageOf(storage)?.getItem(RECORDS_KEY);
     if (!raw) return EMPTY_RECORDS;
     const parsed: unknown = JSON.parse(raw);
     return isRecords(parsed) ? parsed : EMPTY_RECORDS;
@@ -122,9 +132,9 @@ export function loadRecords(storage: Storage | undefined = globalThis.localStora
 }
 
 /** 기록을 저장한다. 저장할 수 없으면(사생활 보호 모드 등) 조용히 넘어간다 */
-export function saveRecords(r: Records, storage: Storage | undefined = globalThis.localStorage): void {
+export function saveRecords(r: Records, storage?: Storage): void {
   try {
-    storage?.setItem(RECORDS_KEY, JSON.stringify(r));
+    storageOf(storage)?.setItem(RECORDS_KEY, JSON.stringify(r));
   } catch {
     // 저장 실패는 게임 진행에 영향을 주지 않는다
   }

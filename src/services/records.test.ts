@@ -76,3 +76,17 @@ test('summarize: 서바이벌, 스테이지, 1인 협동만 요약하고 같이 
   expect(summarize(createGame(testConfig({ mode: 'coop' }), TEST_POOL, MODES), 'S', 'n')).toBeNull();
   expect(summarize(createGame(testConfig(), TEST_POOL, MODES), 'S', 'n')).toBeNull();
 });
+test('localStorage 자체에 접근할 수 없어도(SecurityError) 읽기·쓰기가 예외를 던지지 않는다', () => {
+  const spy = vi.spyOn(globalThis, 'localStorage', 'get').mockImplementation(() => { throw new Error('SecurityError'); });
+  try {
+    expect(loadRecords()).toEqual(EMPTY_RECORDS);
+    expect(() => saveRecords(EMPTY_RECORDS)).not.toThrow();
+  } finally { spy.mockRestore(); }
+});
+test('안쪽 값이 망가진 기록도 빈 기록으로 읽는다', () => {
+  for (const inner of [{ stars: { A: {} } }, { stars: { A: [1, 'x'] } }, { unlocked: { A: 'x' } }, { best: { k: null } }, { badges: [1] }]) {
+    const raw = JSON.stringify({ ...EMPTY_RECORDS, ...inner });
+    const storage = { getItem: () => raw, setItem: () => {} } as unknown as Storage;
+    expect(loadRecords(storage)).toEqual(EMPTY_RECORDS);
+  }
+});

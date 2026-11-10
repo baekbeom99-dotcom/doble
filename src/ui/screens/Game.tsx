@@ -199,7 +199,7 @@ export function Game({ config, symbols, onOver, best = null }: Props) {
           color={config.players[i].color}
           symbols={round.cards[i].map(id => byId.get(id)!)}
           placements={layouts.seats[i]}
-          score={solo ? state.mode.correct : state.players[i].score}
+          score={isSolo ? state.mode.correct : state.players[i].score}
           name={config.players[i].name}
           showName={config.players.length <= 2 && !isCoop}
           locked={state.now < state.players[i].lockedUntil}

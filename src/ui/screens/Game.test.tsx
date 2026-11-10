@@ -206,3 +206,9 @@ test('스테이지 도전: 진행 수를 보여준다', () => {
   render(<Game config={testConfig({ mode: 'soloStage', stage: 1, players: [testConfig().players[0]] })} symbols={symbols} onOver={() => {}} />);
   expect(screen.getByText('0/7')).toBeInTheDocument();
 });
+test('스테이지 도전: 자리 배지에 맞힌 수가 나온다', () => {
+  const cfg = testConfig({ mode: 'soloStage', stage: 1, players: [testConfig().players[0]] });
+  render(<Game config={cfg} symbols={symbols} onOver={() => {}} />);
+  tapSeat(0, createGame(cfg, pool21, MODES).round.answers[0]);
+  expect(within(screen.getByTestId('badge-0')).getByText('1')).toBeInTheDocument();
+});
