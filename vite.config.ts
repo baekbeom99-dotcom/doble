@@ -4,6 +4,8 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  // GitHub Pages 주소(baekbeom99-dotcom.github.io/doble/)에 맞춘 경로
+  base: '/doble/',
   plugins: [
     react(),
     VitePWA({
