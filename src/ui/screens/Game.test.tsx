@@ -136,7 +136,7 @@ test('게임 화면을 떠나면 남은 타이머를 모두 정리한다', () =>
     vi.useRealTimers();
   }
 });
-test('서바이벌: 정답 강조를 보여주는 동안에는 시간이 줄지 않아 +5초가 그대로 남는다', () => {
+test('서바이벌: 정답 강조를 보여주는 동안에는 시간이 줄지 않아 +3초가 그대로 남는다', () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'requestAnimationFrame', 'cancelAnimationFrame', 'performance', 'Date'] });
   try {
     const cfg = testConfig({ mode: 'soloSurvival', players: [testConfig().players[0]] });
@@ -144,9 +144,9 @@ test('서바이벌: 정답 강조를 보여주는 동안에는 시간이 줄지 
     act(() => { vi.advanceTimersByTime(16); });
     tapSeat(0, createGame(cfg, pool, MODES).round.answers[0]);
     act(() => { vi.advanceTimersByTime(1000); });
-    expect(screen.getAllByText('45초').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('43초').length).toBeGreaterThan(0);
     act(() => { vi.advanceTimersByTime(1000); });
-    expect(screen.getAllByText('44초').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('42초').length).toBeGreaterThan(0);
   } finally {
     vi.useRealTimers();
   }

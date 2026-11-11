@@ -11,15 +11,15 @@ const soloCfg: GameConfig = { ...base, mode: 'soloSurvival', players: [{ name: '
 const duoCfg: GameConfig = { ...base, mode: 'score', players: [{ name: 'A', color: 'pink', cardSize: 5 }, { name: 'B', color: 'sky', cardSize: 5 }] };
 const wrongOf = (s: GameState, p: number) => s.round.cards[p].find(id => id !== s.round.answers[p])!;
 
-test('서바이벌: 40초로 시작하고 정답 +5초, 오답 −2초, 0이 되면 끝', () => {
+test('서바이벌: 40초로 시작하고 정답 +3초, 오답 −2초, 0이 되면 끝', () => {
   let s = createGame(soloCfg, pool, MODES);
   expect(s.mode.timeLeft).toBe(40000);
   s = reduce(s, { type: 'TAP', player: 0, symbol: s.round.answers[0], round: 0 }, MODES).state;
-  expect(s.mode.timeLeft).toBe(45000);
+  expect(s.mode.timeLeft).toBe(43000);
   expect(s.mode.correct).toBe(1);
   s = reduce(s, { type: 'TAP', player: 0, symbol: wrongOf(s, 0), round: 1 }, MODES).state;
-  expect(s.mode.timeLeft).toBe(43000);
-  const r = reduce(s, { type: 'TICK', dt: 43000 }, MODES);
+  expect(s.mode.timeLeft).toBe(41000);
+  const r = reduce(s, { type: 'TICK', dt: 41000 }, MODES);
   expect(r.state.phase).toBe('over'); expect(r.events).toContainEqual({ type: 'over' });
 });
 test('서바이벌: 설정한 제한 시간으로 시작한다', () => {

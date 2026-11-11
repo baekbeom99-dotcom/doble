@@ -1,3 +1,4 @@
+import { FullscreenButton } from '../components/FullscreenButton';
 import type { Badge } from '../../content/badges';
 import { STAGE_COUNT } from '../../engine/modes/soloStage';
 import { SEAT_COLORS } from '../../engine/seats';
@@ -46,6 +47,7 @@ export function Result({ state, onRetry, onHome, outcome = null, onNextStage }: 
 
   return (
     <main className="screen screen--center">
+      <FullscreenButton className="screen__fullscreen" />
       <h1 className="title">결과</h1>
       {solo ? (
         <SoloSummary state={state} />

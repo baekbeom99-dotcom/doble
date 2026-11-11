@@ -3,7 +3,7 @@ import type { Mode } from '../state';
 
 /** 설정에서 고르지 않았을 때의 제한 시간 (초) */
 export const SURVIVAL_DEFAULT_S = 40;
-const BONUS_MS = 5000;
+const BONUS_MS = 3000;
 const PENALTY_MS = 2000;
 
 export const soloSurvival: Mode = {

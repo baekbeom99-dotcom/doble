@@ -14,6 +14,7 @@ import { speak } from '../../services/speech';
 import { CenterCard } from '../components/CenterCard';
 import { CoopPanel } from '../components/CoopPanel';
 import { FireGauge } from '../components/FireGauge';
+import { FullscreenButton } from '../components/FullscreenButton';
 import { nextRoam, roamInterval } from '../../engine/coop/roam';
 import { coopMessage } from '../coopText';
 import { SoloHud } from '../components/SoloHud';
@@ -405,7 +406,7 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
           correctSymbol={freeze?.player === i ? freeze.symbol : hits.get(i) ?? null}
           onTap={symbol => tap(i, symbol)}
           streak={rules.combo ? state.players[i].streak : 0}
-          item={rules.items ? state.players[i].item : null}
+          item={rules.items && !isSolo ? state.players[i].item : null}
           onUseItem={() => controller.dispatch({ type: 'USE_ITEM', player: i })}
           team={config.teams?.[i] ?? null}
           hintSymbol={state.players[i].hintRound === round.index ? round.answers[i] : null}
@@ -427,7 +428,15 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
           {coop ? (
             <CoopPanel coop={coop} message={message} solo={soloCoop} bannerLift={bannerLift(i)} />
           ) : isSolo ? (
-            <SoloHud mode={state.mode} kind={config.mode as 'soloSurvival' | 'soloStage'} now={state.now} best={best} lastGrade={lastGrade} />
+            <SoloHud
+              mode={state.mode}
+              kind={config.mode as 'soloSurvival' | 'soloStage'}
+              now={state.now}
+              best={best}
+              lastGrade={lastGrade}
+              item={rules.items ? state.players[0].item : undefined}
+              onUseItem={() => controller.dispatch({ type: 'USE_ITEM', player: 0 })}
+            />
           ) : (
             hudContent
           )}
@@ -488,6 +497,9 @@ export function Game({ config, symbols, onOver, best = null, onExit }: Props) {
       >
         나가기
       </button>
+      <div className="game__fullscreen" style={{ left: table.exit.x - table.exit.h - 14, top: table.exit.y, width: table.exit.h, height: table.exit.h }}>
+        <FullscreenButton />
+      </div>
       {confirmExit && (
         <div className="dialog-backdrop">
           <div className="dialog" role="dialog" aria-modal="true" aria-labelledby="exit-title">

@@ -49,11 +49,30 @@ test('혼자 할 때는 맞힐 때마다 불 공격이 1500ms 늦춰진다 (처�
   s = tap(s, 0).state;
   expect(s.coop!.attackLeft).toBe(total);
 });
-test('여럿이 할 때는 맞혀도 불 공격이 늦춰지지 않는다', () => {
+test('여럿이 할 때도 맞힐 때마다 불 공격이 700ms 늦춰진다', () => {
   let s = createGame(coopCfg(), TEST_POOL, MODES);
   s = reduce(s, { type: 'TICK', dt: 4000 }, MODES).state;
   const left = s.coop!.attackLeft;
-  expect(tap(s, 0).state.coop!.attackLeft).toBe(left);
+  s = tap(s, 0).state;
+  expect(s.coop!.attackLeft).toBe(left + 700);
+  expect(tap(s, 1).state.coop!.attackLeft).toBe(left + 1400);
+});
+test('혼자 할 때는 5번 맞힐 때마다 하트가 1개 회복된다 (최대 5개)', () => {
+  let s = createGame(solo(), TEST_POOL, MODES);
+  for (let i = 0; i < 4; i++) s = tap(s, 0).state;
+  expect(s.coop!.hearts).toBe(3);
+  const fifth = tap(s, 0);
+  expect(fifth.state.coop!.hearts).toBe(4);
+  expect(fifth.events).toContainEqual({ type: 'heartGain' });
+  s = fifth.state;
+  for (let i = 0; i < 15; i++) s = tap(s, 0).state;
+  expect(s.coop!.hearts).toBe(5);
+});
+test('여럿이 할 때는 맞힌 횟수로 하트가 회복되지 않는다', () => {
+  let s = createGame(coopCfg(), TEST_POOL, MODES);
+  const events = [];
+  for (let i = 0; i < 6; i++) for (const p of [0, 1]) { const r = tap(s, p); s = r.state; events.push(...r.events); }
+  expect(events).not.toContainEqual({ type: 'heartGain' });
 });
 test('오답이면 공격 타이머가 1500ms 줄어든다', () => {
   const s = createGame(coopCfg(), TEST_POOL, MODES);

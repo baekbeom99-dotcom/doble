@@ -1,3 +1,4 @@
+import { FullscreenButton } from '../components/FullscreenButton';
 import { BADGES } from '../../content/badges';
 import { createSymbolSet } from '../../content/registry';
 import type { SetConfig } from '../../content/types';
@@ -27,6 +28,7 @@ export function Collection({ records, onBack }: Props) {
 
   return (
     <main className="screen">
+      <FullscreenButton className="screen__fullscreen" />
       <h1 className="title">수집함</h1>
       {empty && <p className="note">아직 기록이 없어요. 혼자 하기로 시작해 보세요</p>}
 

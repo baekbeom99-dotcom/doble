@@ -26,4 +26,5 @@ test('구했을 때, 못 구했을 때, 거북이를 물리쳤을 때, 미션을
 test('알릴 일이 아닌 이벤트는 null', () => {
   expect(coopMessage({ type: 'damage', amount: 1, combo: false }, names)).toBeNull();
   expect(coopMessage({ type: 'heartLost' }, names)).toBeNull();
+  expect(coopMessage({ type: 'heartGain' }, names)).toBe('5번 맞혀서 하트를 하나 얻었어요!');
 });

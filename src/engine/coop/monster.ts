@@ -4,6 +4,8 @@ import { makeMission } from './missions';
 
 export const HEARTS_START = 3;
 export const HEARTS_MAX = 5;
+/** 혼자 할 때 이만큼 맞힐 때마다 하트가 1개 회복된다 */
+export const HEAL_EVERY = 5;
 /** 오답일 때 공격까지 남은 시간이 줄어드는 양 */
 export const WRONG_PENALTY_MS = 1500;
 

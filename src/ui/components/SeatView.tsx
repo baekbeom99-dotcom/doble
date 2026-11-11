@@ -8,7 +8,7 @@ import { Glyph } from './Glyph';
 import { TURTLE_SHELL, TurtleBack } from './TurtleBack';
 
 export const ITEM_LABELS: Record<ItemId, string> = { freeze: '얼리기', swirl: '뒤섞기', hint: '힌트', shield: '방패', timeStop: '시간 정지', double: '2배' };
-const ITEM_ICONS: Record<ItemId, string> = { freeze: '❄️', swirl: '🌀', hint: '💡', shield: '🛡️', timeStop: '⏸️', double: '✨' };
+export const ITEM_ICONS: Record<ItemId, string> = { freeze: '❄️', swirl: '🌀', hint: '💡', shield: '🛡️', timeStop: '⏸️', double: '✨' };
 const TEAM_LETTERS = ['A', 'B'];
 const EXTRAS_GAP = 6;
 /** 콤보 표시 + 아이템 버튼 + 대상 버튼 3개가 함께 들어가는 너비 (배지 높이 배수) */

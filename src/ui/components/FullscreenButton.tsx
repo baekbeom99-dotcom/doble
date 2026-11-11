@@ -46,7 +46,6 @@ export function FullscreenButton({ className = '' }: { className?: string }) {
           ? <path d="M9 3v6H3M15 3v6h6M9 21v-6H3M15 21v-6h6" />
           : <path d="M3 9V3h6M21 9V3h-6M3 15v6h6M21 15v6h-6" />}
       </svg>
-      <span>{label}</span>
     </button>
   );
 }

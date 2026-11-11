@@ -1,4 +1,5 @@
 import { FIRE_MS, RESCUE_NEED } from '../engine/coop/fire';
+import { HEAL_EVERY } from '../engine/coop/monster';
 import type { GameEvent, RewardId } from '../engine/state';
 
 const HANGUL_START = 0xac00;
@@ -33,6 +34,8 @@ export function coopMessage(e: GameEvent, names: string[]): string | null {
       return '불을 못 껐어요. 하트가 하나 줄었어요';
     case 'monsterDown':
       return `악당 거북이를 물리쳤어요! ${e.stage + 1}단계 거북이가 나타났어요`;
+    case 'heartGain':
+      return `${HEAL_EVERY}번 맞혀서 하트를 하나 얻었어요!`;
     case 'missionDone':
       return `미션 성공! ${REWARD_TEXT[e.reward]}`;
     default:

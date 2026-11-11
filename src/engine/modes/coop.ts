@@ -1,21 +1,71 @@
 import { fireCorrect, isBurning, startFire, tickFire } from '../coop/fire';
 import { makeMission, missionProgress } from '../coop/missions';
-import { applyDamage, freshMonster, HEARTS_START, setCoop, WRONG_PENALTY_MS } from '../coop/monster';
+import { applyDamage, freshMonster, HEAL_EVERY, HEARTS_MAX, HEARTS_START, setCoop, WRONG_PENALTY_MS } from '../coop/monster';
 import type { CoopState, GameEvent, GameState, Mode } from '../state';
 
 /** 혼자 할 때 맞힐 때마다 불 공격이 늦춰지는 시간 */
 export const SOLO_DELAY_MS = 1500;
+/** 여럿이 할 때 한 사람이 맞힐 때마다 불 공격이 늦춰지는 시간 */
+export const TEAM_DELAY_MS = 700;
 
-/** 혼자 하는 몬스터 사냥: 맞히면 불 공격을 늦춘다 (이번 공격 간격을 넘지는 않는다) */
+type Outcome = { state: GameState; nextRound: boolean; events: GameEvent[] };
+
+/** 맞히면 불 공격을 늦춘다 (이번 공격 간격을 넘지는 않는다). 불 공격 중이거나 새 거북이가 나왔으면 그대로 둔다 */
 function delayAttack(before: GameState, after: GameState): GameState {
   const c = after.coop!;
-  if (after.players.length !== 1 || c.fire || c.stage !== before.coop!.stage) return after;
-  return setCoop(after, { attackLeft: Math.min(c.attackTotal, c.attackLeft + SOLO_DELAY_MS) });
+  if (c.fire || before.coop!.fire || c.stage !== before.coop!.stage) return after;
+  const delay = after.players.length === 1 ? SOLO_DELAY_MS : TEAM_DELAY_MS;
+  return setCoop(after, { attackLeft: Math.min(c.attackTotal, c.attackLeft + delay) });
+}
+
+/** 혼자 하는 몬스터 사냥: 맞힌 횟수를 세고 HEAL_EVERY번마다 하트를 1개 돌려준다 */
+function soloHeal(r: Outcome): Outcome {
+  if (r.state.players.length !== 1) return r;
+  const c = r.state.coop!;
+  const solved = (c.solved ?? 0) + 1;
+  if (solved % HEAL_EVERY !== 0 || c.hearts >= HEARTS_MAX) return { ...r, state: setCoop(r.state, { solved }) };
+  return { ...r, state: setCoop(r.state, { solved, hearts: c.hearts + 1 }), events: [...r.events, { type: 'heartGain' }] };
+}
+
+/** 정답 처리 뒤에 붙는 덤: 불 공격 지연과 하트 회복 */
+function withBonus(before: GameState, r: Outcome): Outcome {
+  return soloHeal({ ...r, state: delayAttack(before, r.state) });
 }
 
 /** 불을 맞은 사람을 빼고 모두 이번 라운드에 맞혔는지 */
 function allAnswered(s: GameState): boolean {
   return s.coop!.answered.every((a, i) => a || isBurning(s, i));
+}
+
+/** 정답 한 번: 미션 진행, 불 끄기, 피해, 합체 공격 */
+function hit(before: GameState, player: number): Outcome {
+  // 미션 진행도를 먼저 올린다. 보상으로 몬스터가 쓰러지면 새 몬스터와 새 라운드
+  const mission = missionProgress(before, before.round.answers[player]);
+  let s = mission.state;
+  if (s.coop!.stage !== before.coop!.stage) return { state: s, nextRound: true, events: mission.events };
+  const events: GameEvent[] = [...mission.events];
+  // 불이 붙어 있으면 다른 친구의 정답이 불 끄기에 보탬이 된다
+  if (s.coop!.fire) {
+    const r = fireCorrect(s, player);
+    s = r.state;
+    events.push(...r.events);
+  }
+  const stage = s.coop!.stage;
+  const answered = s.coop!.answered.map((a, i) => a || i === player);
+  const first = applyDamage(setCoop(s, { answered }), 1, false);
+  events.push(...first.events);
+  let state = first.state;
+  // 몬스터가 쓰러졌으면 새 몬스터와 새 라운드
+  if (state.coop!.stage !== stage) return { state, nextRound: true, events };
+  // 불 맞은 사람을 빼고 모두 맞혔으면 합체 공격 (맞힌 사람 수만큼 추가 피해)
+  if (allAnswered(state)) {
+    const helpers = state.coop!.answered.filter(Boolean).length;
+    const combo = applyDamage(state, helpers, true);
+    state = setCoop(combo.state, { answered: combo.state.coop!.answered.map(() => false) });
+    events.push(...combo.events);
+    return { state, nextRound: true, events };
+  }
+  return { state, nextRound: false, events };
 }
 
 export const coop: Mode = {
@@ -29,35 +79,7 @@ export const coop: Mode = {
 
   canTap: (s, player) => !isBurning(s, player) && !s.coop!.answered[player],
 
-  onCorrect: (before, player) => {
-    // 미션 진행도를 먼저 올린다. 보상으로 몬스터가 쓰러지면 새 몬스터와 새 라운드
-    const mission = missionProgress(before, before.round.answers[player]);
-    let s = mission.state;
-    if (s.coop!.stage !== before.coop!.stage) return { state: s, nextRound: true, events: mission.events };
-    const events: GameEvent[] = [...mission.events];
-    // 불이 붙어 있으면 다른 친구의 정답이 불 끄기에 보탬이 된다
-    if (s.coop!.fire) {
-      const r = fireCorrect(s, player);
-      s = r.state;
-      events.push(...r.events);
-    }
-    const stage = s.coop!.stage;
-    const answered = s.coop!.answered.map((a, i) => a || i === player);
-    const first = applyDamage(setCoop(s, { answered }), 1, false);
-    events.push(...first.events);
-    let state = first.state;
-    // 몬스터가 쓰러졌으면 새 몬스터와 새 라운드
-    if (state.coop!.stage !== stage) return { state, nextRound: true, events };
-    // 불 맞은 사람을 빼고 모두 맞혔으면 합체 공격 (맞힌 사람 수만큼 추가 피해)
-    if (allAnswered(state)) {
-      const helpers = state.coop!.answered.filter(Boolean).length;
-      const combo = applyDamage(state, helpers, true);
-      state = setCoop(combo.state, { answered: combo.state.coop!.answered.map(() => false) });
-      events.push(...combo.events);
-      return { state: delayAttack(before, state), nextRound: true, events };
-    }
-    return { state, nextRound: false, events };
-  },
+  onCorrect: (before, player) => withBonus(before, hit(before, player)),
 
   // 불 공격 중 오답은 잠금만 걸고 공격 타이머는 줄이지 않는다
   onWrong: s => (s.coop!.fire ? s : setCoop(s, { attackLeft: Math.max(0, s.coop!.attackLeft - WRONG_PENALTY_MS) })),

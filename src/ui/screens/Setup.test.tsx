@@ -5,17 +5,17 @@ import { Setup } from './Setup';
 import { createSymbolSet } from '../../content/registry';
 import { EMPTY_RECORDS } from '../../services/records';
 
-const SET_ID = createSymbolSet({ kind: 'syllable', initial: 'ㄱ', batchim: false }).id;
+const SET_ID = createSymbolSet({ kind: 'consonant', includeDouble: false }).id;
 
 /** 글자 세트를 다 불러와 슬라이더 최대값이 정해질 때까지 기다린다 */
 const waitLoaded = () =>
-  waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).not.toHaveAttribute('max', '3'));
+  waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).not.toHaveAttribute('max', '3'));
 
-test('자음 14개 세트에서는 카드당 심볼 수 최대값이 7이다', async () => {
+test('자음 14개 세트에서는 카드당 글자 수 최대값이 7이고, 부족하다는 안내는 보여주지 않는다', async () => {
   render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
   fireEvent.click(screen.getByRole('radio', { name: '자음' }));
-  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '7'));
-  expect(screen.getByText('심볼이 부족해서 카드당 최대 7개까지 쓸 수 있어요')).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).toHaveAttribute('max', '7'));
+  expect(screen.queryByText(/심볼이 부족해서/)).not.toBeInTheDocument();
 });
 test('시작하면 설정과 불러온 심볼을 넘긴다', async () => {
   const onStart = vi.fn();
@@ -66,9 +66,9 @@ test('플레이어마다 심볼 수를 따로 정한다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
   fireEvent.click(screen.getByRole('radio', { name: '알파벳' }));
-  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 2 심볼 수' })).toHaveAttribute('max', '8'));
-  setRange(screen.getByRole('slider', { name: '플레이어 1 심볼 수' }), 3);
-  setRange(screen.getByRole('slider', { name: '플레이어 2 심볼 수' }), 8);
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 2 글자 수' })).toHaveAttribute('max', '8'));
+  setRange(screen.getByRole('slider', { name: '플레이어 1 글자 수' }), 3);
+  setRange(screen.getByRole('slider', { name: '플레이어 2 글자 수' }), 8);
   const cfg = await startWith(onStart);
   expect(cfg.players.map((p: PlayerConfig) => p.cardSize)).toEqual([3, 8]);
 });
@@ -106,7 +106,7 @@ test('팀 대결 3인은 2:1이고 혼자인 사람의 심볼 수가 2 낮다', 
   const onStart = vi.fn();
   render(<Setup kind="team" onStart={onStart} onBack={() => {}} />);
   fireEvent.click(screen.getByRole('radio', { name: '알파벳' }));
-  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '8'));
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).toHaveAttribute('max', '8'));
   fireEvent.click(within(screen.getByRole('group', { name: '인원' })).getByRole('radio', { name: '3명' }));
   const cfg = await startWith(onStart);
   expect(cfg.teams).toEqual([0, 0, 1]);
@@ -125,7 +125,7 @@ test('팀 대결을 3인에서 4인으로 되돌리면 3번 플레이어의 심�
   const onStart = vi.fn();
   render(<Setup kind="team" onStart={onStart} onBack={() => {}} />);
   fireEvent.click(screen.getByRole('radio', { name: '알파벳' }));
-  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '8'));
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).toHaveAttribute('max', '8'));
   const people = within(screen.getByRole('group', { name: '인원' }));
   fireEvent.click(people.getByRole('radio', { name: '3명' }));
   fireEvent.click(people.getByRole('radio', { name: '4명' }));
@@ -136,10 +136,10 @@ test('3인 팀 보정은 화면에 보이는(제한된) 심볼 수를 기준으�
   const onStart = vi.fn();
   render(<Setup kind="team" onStart={onStart} onBack={() => {}} />);
   fireEvent.click(screen.getByRole('radio', { name: '알파벳' }));
-  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '8'));
-  setRange(screen.getByRole('slider', { name: '플레이어 1 심볼 수' }), 8);
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).toHaveAttribute('max', '8'));
+  setRange(screen.getByRole('slider', { name: '플레이어 1 글자 수' }), 8);
   fireEvent.click(screen.getByRole('radio', { name: '자음' }));
-  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '7'));
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).toHaveAttribute('max', '7'));
   fireEvent.click(within(screen.getByRole('group', { name: '인원' })).getByRole('radio', { name: '3명' }));
   const cfg = await startWith(onStart);
   expect(cfg.players[0].cardSize).toBe(7);
@@ -160,7 +160,7 @@ test('혼자 하기: 스테이지 도전은 열린 단계까지 고를 수 있�
   await waitLoaded();
   fireEvent.click(screen.getByRole('radio', { name: '스테이지 도전' }));
   expect(within(screen.getByRole('group', { name: '단계' })).getAllByRole('radio')).toHaveLength(3);
-  expect(screen.queryByRole('slider', { name: '플레이어 1 심볼 수' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('slider', { name: '플레이어 1 글자 수' })).not.toBeInTheDocument();
   expect(await startWith(onStart)).toMatchObject({ mode: 'soloStage', stage: 3, rules: { items: true } });
 });
 test('혼자 하기: 서바이벌은 제한 시간을 고를 수 있고 기본은 40초', async () => {
@@ -200,16 +200,28 @@ test('혼자 하기: 몬스터 사냥은 1인 협동', async () => {
   expect(cfg.players).toHaveLength(1);
 });
 
-test('기본 글자 세트(받침 없음)는 이중모음을 빼서 카드당 최대 5개다', async () => {
+test('처음에는 자음이 골라져 있고, 글자 수는 고를 수 있는 범위의 가운데 값이다', async () => {
+  const onStart = vi.fn();
+  render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
+  expect(screen.getByRole('radio', { name: '자음' })).toBeChecked();
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).toHaveAttribute('max', '7'));
+  expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).toHaveValue('5');
+  const cfg = await startWith(onStart);
+  expect(cfg.set.kind).toBe('consonant');
+  expect(cfg.players.map((p: PlayerConfig) => p.cardSize)).toEqual([5, 5]);
+});
+test('글자 세트(받침 없음)는 이중모음을 빼서 카드당 최대 5개이고 기본은 가운데인 4개다', async () => {
   render(<Setup kind="versus" onStart={() => {}} onBack={() => {}} />);
-  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).toHaveAttribute('max', '5'));
+  fireEvent.click(screen.getByRole('radio', { name: '글자' }));
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).toHaveValue('4'));
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).toHaveAttribute('max', '5'));
 });
 test('글자 세트의 초성은 팝업에서 토글 버튼으로 고른다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="versus" onStart={onStart} onBack={() => {}} />);
   expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole('button', { name: '초성 고르기' }));
+  fireEvent.click(screen.getByRole('radio', { name: '글자' }));
   const initials = within(within(screen.getByRole('dialog', { name: '초성 고르기' })).getByRole('group', { name: '초성' }));
   expect(initials.getAllByRole('radio')).toHaveLength(INITIALS.length);
   fireEvent.click(initials.getByRole('radio', { name: 'ㄴ' }));

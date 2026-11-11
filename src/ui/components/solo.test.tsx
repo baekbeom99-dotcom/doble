@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { SoloHud } from './SoloHud';
 
 const m = { timeLeft: 12400, score: 37, correct: 9, streak: 0, roundAt: 0, feverUntil: 5000, doubleUntil: 0, timeStopUntil: 0, perfect: 0, great: 0, good: 0, fevers: 1, target: 16 };
@@ -27,4 +27,17 @@ test('스테이지: 진행 수, 2배와 시간 정지 표시', () => {
   expect(screen.getByText('×2')).toBeInTheDocument();
   expect(screen.getByText('⏸️')).toBeInTheDocument();
   expect(screen.getByText('Good')).toBeInTheDocument();
+});
+test('아이템 칸: 이름표를 보여주고, 가진 아이템은 칸 안의 버튼으로 쓴다', () => {
+  const onUseItem = vi.fn();
+  const { rerender } = render(<SoloHud mode={m} kind="soloSurvival" now={9000} best={null} lastGrade={null} item={null} onUseItem={onUseItem} />);
+  expect(screen.getByText('아이템')).toBeInTheDocument();
+  expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  rerender(<SoloHud mode={m} kind="soloSurvival" now={9000} best={null} lastGrade={null} item="hint" onUseItem={onUseItem} />);
+  fireEvent.pointerDown(screen.getByRole('button', { name: '힌트' }));
+  expect(onUseItem).toHaveBeenCalledTimes(1);
+});
+test('아이템을 쓰지 않는 게임에서는 아이템 칸을 보여주지 않는다', () => {
+  render(<SoloHud mode={m} kind="soloStage" now={9000} best={null} lastGrade={null} />);
+  expect(screen.queryByText('아이템')).not.toBeInTheDocument();
 });

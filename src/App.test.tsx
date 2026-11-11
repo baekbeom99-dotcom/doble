@@ -20,13 +20,13 @@ test('팀 대결 → 팀 대결 설정 화면', async () => {
   fireEvent.click(screen.getByRole('button', { name: '팀 대결' }));
   expect(screen.getByRole('heading', { name: '팀 대결' })).toBeInTheDocument();
   // 설정 화면이 글자 세트를 다 불러올 때까지 기다린다
-  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).not.toHaveAttribute('max', '3'));
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).not.toHaveAttribute('max', '3'));
 });
 test('협동 → 협동 설정 화면', async () => {
   render(<App />);
   fireEvent.click(screen.getByRole('button', { name: '협동' }));
   expect(screen.getByRole('heading', { name: '협동' })).toBeInTheDocument();
-  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).not.toHaveAttribute('max', '3'));
+  await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).not.toHaveAttribute('max', '3'));
 });
 test('게임 기록이 localStorage에 저장된다', () => {
   localStorage.clear();
@@ -57,6 +57,6 @@ test('저장소에 접근할 수 없어도 설정 화면이 열린다', async ()
     render(<App />);
     fireEvent.click(screen.getByRole('button', { name: '혼자 하기' }));
     expect(screen.getByRole('heading', { name: '혼자 하기' })).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 심볼 수' })).not.toHaveAttribute('max', '3'));
+    await waitFor(() => expect(screen.getByRole('slider', { name: '플레이어 1 글자 수' })).not.toHaveAttribute('max', '3'));
   } finally { spy.mockRestore(); }
 });

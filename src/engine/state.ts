@@ -84,6 +84,8 @@ export interface CoopState {
   answered: boolean[];
   fire: Fire | null;
   mission: Mission;
+  /** 혼자 할 때 지금까지 맞힌 횟수 (5번마다 하트 회복) */
+  solved?: number;
   /** 미션을 새로 만들 때 쓰는 심볼 정보 */
   symbols: SymbolDef[];
 }
@@ -127,6 +129,7 @@ export type GameEvent =
   | { type: 'damage'; amount: number; combo: boolean }
   | { type: 'monsterDown'; stage: number }
   | { type: 'heartLost' }
+  | { type: 'heartGain' }
   | { type: 'fireStart'; target: number }
   | { type: 'fireRescue'; target: number }
   | { type: 'fireBurn'; target: number }
