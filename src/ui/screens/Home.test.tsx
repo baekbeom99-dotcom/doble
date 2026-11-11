@@ -8,7 +8,7 @@ test('사용 방법 버튼을 누르면 안내 창이 열리고, 닫기를 누�
   fireEvent.click(screen.getByRole('button', { name: '사용 방법' }));
   const dialog = screen.getByRole('dialog', { name: '사용 방법' });
   expect(dialog).toHaveTextContent('내 카드와 가운데 카드에 똑같은 글자가 딱 하나 있어요');
-  for (const mode of ['혼자 하기', '같이 하기', '팀 대결', '협동']) {
+  for (const mode of ['혼자 하기', '대결하기', '팀 대결', '같이 하기']) {
     expect(screen.getByRole('heading', { name: mode })).toBeInTheDocument();
   }
 

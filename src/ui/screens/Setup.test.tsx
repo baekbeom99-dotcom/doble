@@ -149,7 +149,7 @@ test('협동은 1~4명이고 대결 방식이 없다', async () => {
   const onStart = vi.fn();
   render(<Setup kind="coop" onStart={onStart} onBack={() => {}} />);
   await waitLoaded();
-  expect(screen.getByRole('heading', { name: '협동' })).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: '같이 하기' })).toBeInTheDocument();
   expect(within(screen.getByRole('group', { name: '인원' })).getAllByRole('radio')).toHaveLength(4);
   expect(screen.queryByRole('group', { name: '대결 방식' })).not.toBeInTheDocument();
   expect(await startWith(onStart)).toMatchObject({ mode: 'coop', teams: null, rules: { combo: false, finalRound: false, items: false } });

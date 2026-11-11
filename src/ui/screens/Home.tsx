@@ -24,9 +24,9 @@ const HILLS: [number, number, number, number, string][] = [
 
 const MODES: { kind: SetupKind; title: string; desc: string; color: keyof typeof SEAT_COLORS }[] = [
   { kind: 'solo', title: '혼자 하기', desc: '바다에서 혼자 연습해요', color: 'yellow' },
-  { kind: 'versus', title: '같이 하기', desc: '누가 먼저 찾나 겨뤄요', color: 'pink' },
+  { kind: 'versus', title: '대결하기', desc: '누가 먼저 찾나 겨뤄요', color: 'pink' },
   { kind: 'team', title: '팀 대결', desc: '두 팀으로 점수를 모아요', color: 'sky' },
-  { kind: 'coop', title: '협동', desc: '악당 거북이를 물리쳐요', color: 'lime' },
+  { kind: 'coop', title: '같이 하기', desc: '악당 거북이를 물리쳐요', color: 'lime' },
 ];
 
 function hill(base: number, amp: number, len: number, phase: number): string {

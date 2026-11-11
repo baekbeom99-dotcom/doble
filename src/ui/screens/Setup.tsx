@@ -11,7 +11,7 @@ import { ALL_RULES, NO_RULES, type BombConfig, type GameConfig, type ModeId, typ
 export type SetupKind = 'solo' | 'versus' | 'team' | 'coop';
 type Method = Extract<ModeId, 'score' | 'bomb'>;
 
-const TITLES: Record<SetupKind, string> = { solo: '혼자 하기', versus: '같이 하기', team: '팀 대결', coop: '협동' };
+const TITLES: Record<SetupKind, string> = { solo: '혼자 하기', versus: '대결하기', team: '팀 대결', coop: '같이 하기' };
 const COUNTS: Record<SetupKind, number[]> = { solo: [1], versus: [2, 3, 4], team: [3, 4], coop: [1, 2, 3, 4] };
 const DEFAULT_COUNT: Record<SetupKind, number> = { solo: 1, versus: 2, team: 4, coop: 2 };
 const COLOR_NAMES: Record<SeatColor, string> = { pink: '핑크', sky: '하늘', yellow: '노랑', lime: '연두', purple: '보라' };
