@@ -871,3 +871,8 @@ body::after {
   .villain, .center-card--shell { transition: none; }
   .defeat > i, .defeat__flash, .defeat__ring { display: none; }
 }
+
+/* ---------- 전체 화면 버튼 ---------- */
+.fullscreen-btn { display: inline-flex; align-items: center; gap: 8px; }
+.fullscreen-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+.title__fullscreen { position: absolute; right: 24px; top: 20px; z-index: 2; }

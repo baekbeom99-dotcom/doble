@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 import { SEAT_COLORS } from '../../engine/seats';
+import { FullscreenButton } from '../components/FullscreenButton';
 import { paperStack } from '../paper';
 import type { SetupKind } from './Setup';
 
@@ -129,6 +130,7 @@ export function Home({ onPick, onCollection }: { onPick: (kind: SetupKind) => vo
       <PaperTurtle />
 
       {onCollection && <button className="btn title__collection" onClick={onCollection}>수집함</button>}
+      <FullscreenButton className="title__fullscreen" />
 
       <nav className="title__modes" aria-label="모드 고르기">
         {MODES.map(m => (
