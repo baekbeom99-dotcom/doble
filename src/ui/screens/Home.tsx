@@ -1,6 +1,7 @@
-import type { CSSProperties } from 'react';
+import { useCallback, useState, type CSSProperties } from 'react';
 import { SEAT_COLORS } from '../../engine/seats';
 import { FullscreenButton } from '../components/FullscreenButton';
+import { HelpDialog } from '../components/HelpDialog';
 import { paperStack } from '../paper';
 import type { SetupKind } from './Setup';
 
@@ -104,6 +105,8 @@ function ModeIcon({ kind }: { kind: SetupKind }) {
 }
 
 export function Home({ onPick, onCollection }: { onPick: (kind: SetupKind) => void; onCollection?: () => void }) {
+  const [help, setHelp] = useState(false);
+  const closeHelp = useCallback(() => setHelp(false), []);
   return (
     <main className="title-screen">
       <svg className="title__sky" viewBox="0 0 1000 750" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -130,7 +133,10 @@ export function Home({ onPick, onCollection }: { onPick: (kind: SetupKind) => vo
       <PaperTurtle />
 
       {onCollection && <button className="btn title__collection" onClick={onCollection}>수집함</button>}
-      <FullscreenButton className="title__fullscreen" />
+      <div className="title__tools">
+        <button className="btn" onClick={() => setHelp(true)}>사용 방법</button>
+        <FullscreenButton />
+      </div>
 
       <nav className="title__modes" aria-label="모드 고르기">
         {MODES.map(m => (
@@ -141,6 +147,7 @@ export function Home({ onPick, onCollection }: { onPick: (kind: SetupKind) => vo
           </button>
         ))}
       </nav>
+      {help && <HelpDialog onClose={closeHelp} />}
     </main>
   );
 }

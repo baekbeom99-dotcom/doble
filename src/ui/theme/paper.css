@@ -875,4 +875,16 @@ body::after {
 /* ---------- 전체 화면 버튼 ---------- */
 .fullscreen-btn { display: inline-flex; align-items: center; gap: 8px; }
 .fullscreen-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-.title__fullscreen { position: absolute; right: 24px; top: 20px; z-index: 2; }
+.title__tools { position: absolute; right: 24px; top: 20px; z-index: 2; display: flex; gap: 20px; }
+
+/* ---------- 사용 방법 안내 창 ---------- */
+.help { display: flex; flex-direction: column; width: min(860px, calc(100% - 64px)); max-height: calc(100% - 64px); padding: 20px 28px; text-align: left; }
+.help h2 { text-align: center; }
+.help__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; padding: 4px 6px; }
+.help h3 { margin: 0 0 4px; font-size: 20px; font-weight: 400; color: #8a5a2b; }
+.help ol, .help ul { margin: 0; padding-left: 24px; font-size: 16px; line-height: 1.5; color: var(--ink); }
+.help__how { padding: 10px 14px; border-radius: 14px; background: var(--paper-2); }
+.help__how ol { font-size: 18px; }
+.help__modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 24px; }
+.help .actions { flex: 0 0 auto; margin-top: 14px; }
+
