@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { INITIALS } from '../../content/hangul';
 import type { PlayerConfig } from '../../engine/state';
-import { Setup } from './Setup';
+import { fitSetup, Setup } from './Setup';
 import { createSymbolSet } from '../../content/registry';
 import { EMPTY_RECORDS } from '../../services/records';
 
@@ -270,4 +270,12 @@ test('이름 입력칸 길이는 이름 길이에 맞춰 늘고 준다', () => {
   expect(width()).toBeGreaterThan(short);
   fireEvent.change(input, { target: { value: 'Al' } });
   expect(width()).toBeLessThan(short + 0.01 + 1);
+});
+test('설정 화면은 1024×768 기준으로 그리고 기기 화면에 맞게 통째로 줄이거나 키운다', () => {
+  expect(fitSetup(1024, 768)).toEqual({ zoom: 1, width: 1024, height: 768 });
+  // 작은 화면: 줄여서 그리되 안쪽 배치는 기준 너비를 그대로 쓴다
+  expect(fitSetup(800, 720)).toEqual({ zoom: 0.78125, width: 1024, height: 921.6 });
+  // 옆으로 긴 화면: 높이에 맞춘다
+  expect(fitSetup(1600, 768)).toEqual({ zoom: 1, width: 1600, height: 768 });
+  expect(fitSetup(0, 0).zoom).toBe(1);
 });

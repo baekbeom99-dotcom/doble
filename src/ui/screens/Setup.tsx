@@ -34,7 +34,28 @@ export function setupScale(kind: SetupKind, count: number, bomb: boolean): numbe
   if (kind === 'solo') return 1.3;
   if (kind === 'coop') return [1.3, 1.25, 1.12, 1][count - 1];
   if (bomb || count === 4) return 1;
-  return count === 2 ? 1.12 : 1.05;
+  return 1.05;
+}
+
+/** 설정 화면을 그리는 기준 크기. 이보다 작은 기기에서는 통째로 줄여서 상자가 화면 밖으로 나가지 않게 한다 */
+export const SETUP_W = 1024;
+export const SETUP_H = 768;
+
+/** 기기 화면(w×h)에 맞춘 확대 비율과, 그 비율로 그렸을 때의 안쪽 크기 */
+export function fitSetup(w: number, h: number): { zoom: number; width: number; height: number } {
+  if (w <= 0 || h <= 0) return { zoom: 1, width: SETUP_W, height: SETUP_H };
+  const zoom = Math.min(w / SETUP_W, h / SETUP_H);
+  return { zoom, width: w / zoom, height: h / zoom };
+}
+
+function useFitSetup() {
+  const [size, setSize] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  useEffect(() => {
+    const onResize = () => setSize({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  return fitSetup(size.w, size.h);
 }
 
 const NAME_MAX = 10;
@@ -234,9 +255,10 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
     : <button className="btn btn--primary setup__start" onClick={start}><Icon name="play" />시작</button>;
 
   const scale = setupScale(kind, count, versusLike && method === 'bomb');
+  const fit = useFitSetup();
   // 스크롤 없이 한 화면: 위 막대(처음으로·제목·시작) + 왼쪽(사람) / 오른쪽(규칙) 두 칸. 고를 것이 많은 화면은 촘촘하게 그린다
   return (
-    <main className={['setup', scale === 1 && 'setup--dense', solo && 'setup--solo'].filter(Boolean).join(' ')} style={{ '--setup-scale': scale } as CSSProperties}>
+    <main className={['setup', scale === 1 && 'setup--dense', solo && 'setup--solo'].filter(Boolean).join(' ')} style={{ '--setup-scale': scale, zoom: fit.zoom, width: fit.width, height: fit.height } as CSSProperties}>
       <header className="setup__bar">
         <div className="setup__bar-side">
           <button className="btn setup__back" onClick={onBack}><Icon name="home" />처음으로</button>
@@ -381,7 +403,7 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
                   </fieldset>
                 </>
               )}
-              <fieldset className="toggles setup__line" aria-label="덧붙는 요소">
+              <fieldset className="toggles setup__line setup__line--rules" aria-label="덧붙는 요소">
                 <span className="setup__label"><Icon name="plus" />덧붙는 요소</span>
                 {(Object.keys(RULE_NAMES) as (keyof Rules)[]).map(r => (
                   <Check key={r} label={RULE_NAMES[r]} checked={rules[r]} onChange={v => setRules(rs => ({ ...rs, [r]: v }))} />
