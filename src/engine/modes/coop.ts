@@ -87,7 +87,12 @@ export const coop: Mode = {
   onTick: (s, dt) => {
     if (s.coop!.fire) return tickFire(s, dt);
     const attackLeft = s.coop!.attackLeft - dt;
-    if (attackLeft <= 0) return startFire(s);
+    if (attackLeft <= 0) {
+      const fire = startFire(s);
+      // 혼자면 카드를 그대로 둔다. 여럿이면 새 카드를 돌려서 이미 맞힌 친구도 구하러 나설 수 있게 한다
+      if (s.players.length === 1) return fire;
+      return { ...fire, state: setCoop(fire.state, { answered: s.coop!.answered.map(() => false) }), nextRound: true };
+    }
     return { state: setCoop(s, { attackLeft }) };
   },
 

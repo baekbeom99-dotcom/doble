@@ -58,7 +58,7 @@ test('불 붙은 사람을 빼고 모두 맞히면 맞힌 사람 수만큼 합�
   const target = s.coop!.fire!.target;
   const r = tap(s, 1 - target);
   expect(r.events).toContainEqual({ type: 'damage', amount: 1, combo: true });
-  expect(r.state.round.index).toBe(1);
+  expect(r.state.round.index).toBe(s.round.index + 1);
   expect(r.state.coop!.fire).toMatchObject({ target, got: 1 });
 });
 

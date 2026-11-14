@@ -143,7 +143,7 @@ export interface Mode {
   initPlayer?(config: GameConfig, player: number): Partial<PlayerState>;
   onCorrect(s: GameState, player: number, value: number): { state: GameState; nextRound: boolean; events?: GameEvent[] };
   onWrong(s: GameState, player: number): GameState;
-  onTick(s: GameState, dt: number): { state: GameState; events?: GameEvent[] };
+  onTick(s: GameState, dt: number): { state: GameState; events?: GameEvent[]; nextRound?: boolean };
   isOver(s: GameState): boolean;
   /** false면 이 사람의 터치를 무시한다 (이미 맞힌 사람, 차례가 아닌 사람 등) */
   canTap?(s: GameState, player: number): boolean;

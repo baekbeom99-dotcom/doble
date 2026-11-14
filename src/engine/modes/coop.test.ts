@@ -101,3 +101,20 @@ test('하트가 0이 되면 끝난다', () => {
   expect(coop.isOver({ ...s, coop: { ...s.coop!, hearts: 0 } })).toBe(true);
   expect(coop.isOver(s)).toBe(false);
 });
+test('여럿이 할 때 불 공격이 시작되면 새 카드가 나오고, 이미 맞힌 사람도 다시 누를 수 있다', () => {
+  let s = createGame(coopCfg(), TEST_POOL, MODES);
+  s = tap(s, 0).state;
+  expect(s.coop!.answered[0]).toBe(true);
+  const round = s.round.index;
+  const r = reduce(s, { type: 'TICK', dt: s.coop!.attackLeft }, MODES);
+  expect(r.state.coop!.fire).not.toBeNull();
+  expect(r.state.coop!.answered.every(a => !a)).toBe(true);
+  expect(r.state.round.index).toBe(round + 1);
+  expect(r.events).toContainEqual({ type: 'round', index: round + 1 });
+});
+test('혼자 할 때는 불 공격이 시작되어도 카드가 그대로다', () => {
+  const s = createGame(solo(), TEST_POOL, MODES);
+  const r = reduce(s, { type: 'TICK', dt: s.coop!.attackLeft }, MODES);
+  expect(r.state.coop!.fire).not.toBeNull();
+  expect(r.state.round.index).toBe(s.round.index);
+});

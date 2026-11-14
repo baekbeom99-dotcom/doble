@@ -109,7 +109,9 @@ function handleTap(s: GameState, a: Extract<Action, { type: 'TAP' }>, modes: Mod
 
 function handleTick(s: GameState, dt: number, modes: ModeTable): Step {
   const res = modes[s.config.mode].onTick({ ...s, now: s.now + dt }, dt);
-  return { state: res.state, events: res.events ?? [] };
+  if (!res.nextRound) return { state: res.state, events: res.events ?? [] };
+  const next = nextRound(res.state);
+  return { state: next.state, events: [...(res.events ?? []), ...next.events] };
 }
 
 function handleUseItem(s: GameState, player: number): Step | null {

@@ -5,6 +5,7 @@ import type { SetConfig, SymbolDef } from '../../content/types';
 import { SURVIVAL_DEFAULT_S } from '../../engine/modes/soloSurvival';
 import { SEAT_COLORS, type SeatColor } from '../../engine/seats';
 import { EMPTY_RECORDS, type Records } from '../../services/records';
+import { primeSpeech } from '../../services/speech';
 import { FullscreenButton } from '../components/FullscreenButton';
 import { ALL_RULES, NO_RULES, type BombConfig, type GameConfig, type ModeId, type Rules } from '../../engine/state';
 
@@ -222,6 +223,8 @@ export function Setup({ kind, onStart, onBack, records = EMPTY_RECORDS }: Props)
     // 빠르게 두 번 눌러도 한 번만 시작한다
     if (starting.current) return;
     starting.current = true;
+    // 시작을 누른 이 순간에 소리 허락을 받아 둔다 (모바일은 누른 순간이 아니면 첫 소리를 막는다)
+    if (speech) primeSpeech();
     // 세트를 아직 불러오는 중이면 기다렸다가 시작한다
     const syms = symbols ?? (await createSymbolSet(setConfig).loadSymbols());
     const limit = maxCardSize(syms.length);
